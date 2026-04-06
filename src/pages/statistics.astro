@@ -1,0 +1,278 @@
+---
+import Layout from '../layouts/Layout.astro';
+import GlassCard from '../components/GlassCard.astro';
+import { supabaseServerClient } from '../lib/supabase-server';
+
+const supabase = supabaseServerClient(Astro.cookies);
+const { data: { session } } = await supabase.auth.getSession();
+const userId = session!.user.id;
+
+// Default: last 30 days
+const since = new Date();
+since.setDate(since.getDate() - 30);
+
+const { data: sets } = await supabase
+  .from('session_sets')
+  .select(`
+    weight, reps, completed, logged_at, exercise_name,
+    exercises (muscle_groups),
+    workout_sessions!inner (user_id, completed_at)
+  `)
+  .eq('workout_sessions.user_id', userId)
+  .not('workout_sessions.completed_at', 'is', null)
+  .eq('completed', true)
+  .gte('logged_at', since.toISOString());
+
+// Volume by day (last 30 days)
+const volumeByDate: Record<string, number> = {};
+const muscleCount: Record<string, number> = {};
+const topLifts: Record<string, number> = {};
+
+for (const s of (sets || [])) {
+  const day = new Date(s.logged_at).toISOString().split('T')[0];
+  const vol = (s.weight || 0) * (s.reps || 0);
+  volumeByDate[day] = (volumeByDate[day] || 0) + vol;
+
+  const muscles = (s.exercises as any)?.muscle_groups || [];
+  for (const m of muscles) muscleCount[m] = (muscleCount[m] || 0) + 1;
+
+  if (s.weight > 0) topLifts[s.exercise_name] = Math.max(topLifts[s.exercise_name] || 0, s.weight);
+}
+
+const volumeArray = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() - (29 - i));
+  const key = d.toISOString().split('T')[0];
+  return { date: key, volume: Math.round(volumeByDate[key] || 0) };
+});
+
+const sortedLifts = Object.entries(topLifts)
+  .sort(([,a],[,b]) => b - a)
+  .slice(0, 5)
+  .map(([name, weight]) => ({ name, weight }));
+
+const totalVolume = Object.values(volumeByDate).reduce((s, v) => s + v, 0);
+
+const volumeArrayJson = JSON.stringify(volumeArray);
+const muscleCountJson = JSON.stringify(muscleCount);
+const topLiftsJson = JSON.stringify(sortedLifts);
+---
+
+<Layout title="Statistics">
+  <div class="flex flex-col gap-8 w-full max-w-[1000px]">
+    <!-- Header & Filters -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <div class="flex flex-col gap-2">
+        <h1 class="text-white text-4xl md:text-5xl font-bold leading-tight tracking-tight">Analytics</h1>
+        <p class="text-muted text-base">Track your progressive overload and history.</p>
+      </div>
+      <div class="flex h-12 items-center justify-center rounded-lg bg-surface border border-surface-border p-1">
+        {['7d','30d','6m'].map(r => (
+          <button data-range={r} class="range-btn flex cursor-pointer h-full grow items-center justify-center rounded-md px-4 text-muted text-sm font-medium transition-colors hover:text-white">
+            {r === '7d' ? '7D' : r === '30d' ? '30D' : '6M'}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+      <!-- Volume Over Time -->
+      <GlassCard class="col-span-1 md:col-span-12 flex flex-col gap-6 w-full overflow-hidden p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+            <h3 class="text-white text-xl font-bold">Volume Over Time</h3>
+            <p class="text-muted text-sm mt-1">Total weight × reps (kg)</p>
+          </div>
+          <div class="text-right mt-4 sm:mt-0">
+            <span id="total-volume-label" class="font-mono text-primary text-2xl font-bold">{Math.round(totalVolume).toLocaleString()}</span>
+            <p class="text-muted text-xs mt-1">kg this period</p>
+          </div>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="volume-chart"></canvas>
+        </div>
+      </GlassCard>
+
+      <!-- 1RM Records -->
+      <GlassCard class="col-span-1 md:col-span-5 flex flex-col gap-4 p-6">
+        <div class="flex justify-between items-center">
+          <h3 class="text-white text-xl font-bold">Top Lifts</h3>
+          <span class="material-symbols-outlined text-muted text-[20px]">workspace_premium</span>
+        </div>
+        <div id="top-lifts-list" class="flex flex-col gap-3">
+          {sortedLifts.length === 0 ? (
+            <p class="text-muted text-sm text-center py-4">No data yet. Complete a session first.</p>
+          ) : (
+            sortedLifts.map((lift, i) => {
+              const colors = ['text-primary bg-primary/10', 'text-accent bg-accent/10', 'text-yellow-400 bg-yellow-400/10', 'text-white/80 bg-white/5', 'text-white/60 bg-white/5'];
+              return (
+                <div class="flex items-center justify-between p-3 rounded-lg bg-surface-hover border border-surface-border">
+                  <div class="flex items-center gap-3">
+                    <div class={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${colors[i] || colors[4]}`}>#{i+1}</div>
+                    <div>
+                      <p class="text-white font-medium text-sm">{lift.name}</p>
+                    </div>
+                  </div>
+                  <span class="font-mono text-white font-bold">{lift.weight}<span class="text-sm font-normal text-muted ml-1">kg</span></span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </GlassCard>
+
+      <!-- Muscle Focus Radar -->
+      <GlassCard class="col-span-1 md:col-span-7 flex flex-col gap-4 p-6">
+        <div class="flex justify-between items-center">
+          <h3 class="text-white text-xl font-bold">Muscle Focus</h3>
+          <span class="text-muted text-xs px-2 py-1 bg-surface-hover rounded border border-surface-border">Last 30 Days</span>
+        </div>
+        <div class="flex-1 flex items-center justify-center min-h-[220px]">
+          {Object.keys(muscleCount).length === 0 ? (
+            <p class="text-muted text-sm">No data yet.</p>
+          ) : (
+            <canvas id="muscle-chart" style="max-height: 250px;"></canvas>
+          )}
+        </div>
+      </GlassCard>
+    </div>
+  </div>
+</Layout>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" is:inline></script>
+
+<script define:vars={{ volumeArrayJson, muscleCountJson, topLiftsJson }}>
+  const volumeData = JSON.parse(volumeArrayJson);
+  const muscleData = JSON.parse(muscleCountJson);
+
+  // ─── Volume Chart ─────────────────────────────────────────────────
+  const volCanvas = document.getElementById('volume-chart');
+  if (volCanvas) {
+    const ctx = volCanvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(60, 249, 26, 0.3)');
+    gradient.addColorStop(1, 'rgba(60, 249, 26, 0)');
+
+    const volChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: volumeData.map(d => {
+          const date = new Date(d.date + 'T12:00:00');
+          return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+        }),
+        datasets: [{
+          data: volumeData.map(d => d.volume),
+          borderColor: '#3cf91a',
+          backgroundColor: gradient,
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#3cf91a',
+          pointHoverRadius: 5,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: 'rgba(15,15,15,0.9)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#9CA3AF',
+          bodyColor: '#fff',
+          callbacks: { label: ctx => ` ${ctx.raw.toLocaleString()} kg` },
+        }},
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9CA3AF', maxTicksLimit: 8, font: { size: 11 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9CA3AF', font: { size: 11 }, callback: v => v > 0 ? `${(v/1000).toFixed(1)}k` : '0' }, beginAtZero: true },
+        },
+      },
+    });
+
+    // ─── Range Filter ─────────────────────────────────────────────
+    let activeRange = '30d';
+    const rangeBtns = document.querySelectorAll('.range-btn');
+    rangeBtns.forEach(btn => {
+      if (btn.dataset.range === activeRange) {
+        btn.classList.add('bg-surface-hover', 'text-white');
+        btn.classList.remove('text-muted');
+      }
+      btn.addEventListener('click', async () => {
+        activeRange = btn.dataset.range;
+        rangeBtns.forEach(b => { b.classList.remove('bg-surface-hover','text-white'); b.classList.add('text-muted'); });
+        btn.classList.add('bg-surface-hover','text-white'); btn.classList.remove('text-muted');
+
+        const res = await fetch(`/api/stats?range=${activeRange}`);
+        const data = await res.json();
+
+        volChart.data.labels = data.volumeByDay.map(d => {
+          const date = new Date(d.date + 'T12:00:00');
+          return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+        });
+        volChart.data.datasets[0].data = data.volumeByDay.map(d => d.volume);
+        volChart.update();
+
+        const total = data.volumeByDay.reduce((s, d) => s + d.volume, 0);
+        document.getElementById('total-volume-label').textContent = Math.round(total).toLocaleString();
+
+        // Update top lifts
+        const liftsList = document.getElementById('top-lifts-list');
+        if (data.topLifts.length === 0) {
+          liftsList.innerHTML = '<p class="text-muted text-sm text-center py-4">No data yet.</p>';
+        } else {
+          const colors = ['text-primary bg-primary/10','text-accent bg-accent/10','text-yellow-400 bg-yellow-400/10','text-white/80 bg-white/5','text-white/60 bg-white/5'];
+          liftsList.innerHTML = data.topLifts.map((l, i) => `
+            <div class="flex items-center justify-between p-3 rounded-lg bg-surface-hover border border-surface-border">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${colors[i]||colors[4]}">#${i+1}</div>
+                <p class="text-white font-medium text-sm">${l.name}</p>
+              </div>
+              <span class="font-mono text-white font-bold">${l.weight}<span class="text-sm font-normal text-muted ml-1">kg</span></span>
+            </div>`).join('');
+        }
+      });
+    });
+
+    // Set initial active state for 30d
+    rangeBtns.forEach(b => {
+      if (b.dataset.range === '30d') { b.classList.add('bg-surface-hover','text-white'); b.classList.remove('text-muted'); }
+    });
+  }
+
+  // ─── Muscle Radar Chart ───────────────────────────────────────────
+  const muscleCanvas = document.getElementById('muscle-chart');
+  if (muscleCanvas && Object.keys(muscleData).length > 0) {
+    const labels = Object.keys(muscleData).map(m => m.charAt(0).toUpperCase() + m.slice(1));
+    const values = Object.values(muscleData);
+    new Chart(muscleCanvas.getContext('2d'), {
+      type: 'radar',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: '#00D4FF',
+          backgroundColor: 'rgba(0, 212, 255, 0.15)',
+          borderWidth: 2,
+          pointBackgroundColor: '#00D4FF',
+          pointRadius: 3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          r: {
+            grid: { color: 'rgba(255,255,255,0.08)' },
+            angleLines: { color: 'rgba(255,255,255,0.08)' },
+            ticks: { display: false },
+            pointLabels: { color: '#9CA3AF', font: { size: 11 } },
+          },
+        },
+      },
+    });
+  }
+</script>

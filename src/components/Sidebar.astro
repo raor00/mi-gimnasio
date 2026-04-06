@@ -1,0 +1,127 @@
+---
+import { supabaseServerClient } from '../lib/supabase-server';
+
+const currentPath = Astro.url.pathname;
+
+const supabase = supabaseServerClient(Astro.cookies);
+const { data: { session } } = await supabase.auth.getSession();
+
+let displayName = 'Lifter';
+if (session) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('name')
+    .eq('id', session.user.id)
+    .single();
+  displayName = profile?.name || session.user.email?.split('@')[0] || 'Lifter';
+}
+const initials = displayName.slice(0, 2).toUpperCase();
+---
+
+{session && (
+  <>
+    <!-- Mobile Hamburger Button & Header -->
+    <div class="sm:hidden flex items-center justify-between bg-surface backdrop-blur-md border-b border-surface-border p-4 z-30 sticky top-0">
+      <div class="flex items-center gap-3">
+        <div class="rounded-full size-8 bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xs font-bold">{initials}</div>
+        <h1 class="text-white text-base font-medium">Mi Gimnasio</h1>
+      </div>
+      <button id="mobile-menu-btn" class="text-white p-1 hover:bg-surface-hover rounded-md transition-colors">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+    </div>
+
+    <!-- Sidebar Drawer -->
+    <div id="sidebar-drawer" class="fixed sm:static inset-y-0 left-0 w-[240px] transform -translate-x-full sm:translate-x-0 transition-transform duration-300 ease-in-out bg-surface sm:bg-transparent backdrop-blur-xl sm:backdrop-blur-md border-r border-surface-border p-4 z-40 flex flex-col justify-between sm:flex-shrink-0">
+      <div class="flex flex-col gap-8">
+        <!-- Desktop Profile -->
+        <div class="hidden sm:flex gap-3 items-center">
+          <div class="rounded-full size-10 bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">{initials}</div>
+          <div class="flex flex-col overflow-hidden w-full">
+            <h1 class="text-white text-base font-medium leading-normal truncate">{displayName}</h1>
+            <p class="text-primary text-xs font-normal leading-normal">Miembro Registrado</p>
+          </div>
+        </div>
+
+        <!-- Mobile Drawer Header -->
+        <div class="sm:hidden flex justify-between items-center mb-4">
+          <div class="flex flex-col overflow-hidden">
+            <h1 class="text-white text-sm font-medium leading-normal truncate">{displayName}</h1>
+          </div>
+          <button id="mobile-close-btn" class="text-white p-1 hover:bg-surface-hover rounded-md">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex flex-col gap-2">
+          <a href="/" class={`flex items-center gap-3 px-3 py-3 sm:py-2 rounded-lg transition-colors group ${currentPath === '/' ? 'bg-surface-hover border border-surface-border' : 'hover:bg-surface-hover'}`}>
+            <div class={`transition-colors ${currentPath === '/' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>
+              <span class="material-symbols-outlined" style={currentPath === '/' ? "font-variation-settings: 'FILL' 1;" : ""}>home</span>
+            </div>
+            <p class={`text-sm font-medium leading-normal transition-colors ${currentPath === '/' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>Dashboard</p>
+          </a>
+
+          <a href="/routines" class={`flex items-center gap-3 px-3 py-3 sm:py-2 rounded-lg transition-colors group ${currentPath === '/routines' ? 'bg-surface-hover border border-surface-border' : 'hover:bg-surface-hover'}`}>
+            <div class={`transition-colors ${currentPath === '/routines' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>
+              <span class="material-symbols-outlined" style={currentPath === '/routines' ? "font-variation-settings: 'FILL' 1;" : ""}>list</span>
+            </div>
+            <p class={`text-sm font-medium leading-normal transition-colors ${currentPath === '/routines' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>Routines</p>
+          </a>
+
+          <a href="/calendar" class={`flex items-center gap-3 px-3 py-3 sm:py-2 rounded-lg transition-colors group ${currentPath === '/calendar' ? 'bg-surface-hover border border-surface-border' : 'hover:bg-surface-hover'}`}>
+            <div class={`transition-colors ${currentPath === '/calendar' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>
+              <span class="material-symbols-outlined" style={currentPath === '/calendar' ? "font-variation-settings: 'FILL' 1;" : ""}>calendar_month</span>
+            </div>
+            <p class={`text-sm font-medium leading-normal transition-colors ${currentPath === '/calendar' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>Calendar</p>
+          </a>
+
+          <a href="/statistics" class={`flex items-center gap-3 px-3 py-3 sm:py-2 rounded-lg transition-colors group ${currentPath === '/statistics' ? 'bg-surface-hover border border-surface-border' : 'hover:bg-surface-hover'}`}>
+            <div class={`transition-colors ${currentPath === '/statistics' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>
+              <span class="material-symbols-outlined" style={currentPath === '/statistics' ? "font-variation-settings: 'FILL' 1;" : ""}>bar_chart</span>
+            </div>
+            <p class={`text-sm font-medium leading-normal transition-colors ${currentPath === '/statistics' ? 'text-primary' : 'text-muted group-hover:text-white'}`}>Statistics</p>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Cerrar sesion -->
+      <a href="/api/auth/signout" class="flex items-center gap-3 px-3 py-3 sm:py-2 mt-8 rounded-lg transition-colors group hover:bg-red-500/10 border border-transparent hover:border-red-500/20">
+        <div class="transition-colors text-red-500/70 group-hover:text-red-500">
+          <span class="material-symbols-outlined">logout</span>
+        </div>
+        <p class="text-sm font-medium leading-normal transition-colors text-red-500/70 group-hover:text-red-500">Cerrar Sesión</p>
+      </a>
+    </div>
+
+    <!-- Mobile Overlay Backdrop -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden sm:hidden"></div>
+
+    <script>
+      const menuBtn = document.getElementById('mobile-menu-btn');
+      const closeBtn = document.getElementById('mobile-close-btn');
+      const sidebar = document.getElementById('sidebar-drawer');
+      const overlay = document.getElementById('mobile-overlay');
+
+      function openMenu() {
+        if(sidebar && overlay) {
+          sidebar.classList.remove('-translate-x-full');
+          overlay.classList.remove('hidden');
+          document.body.style.overflow = 'hidden'; 
+        }
+      }
+
+      function closeMenu() {
+        if(sidebar && overlay) {
+          sidebar.classList.add('-translate-x-full');
+          overlay.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+      }
+
+      menuBtn?.addEventListener('click', openMenu);
+      closeBtn?.addEventListener('click', closeMenu);
+      overlay?.addEventListener('click', closeMenu);
+    </script>
+  </>
+)}

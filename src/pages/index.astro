@@ -1,0 +1,233 @@
+---
+import Layout from '../layouts/Layout.astro';
+import GlassCard from '../components/GlassCard.astro';
+import { supabaseServerClient } from '../lib/supabase-server';
+
+const supabase = supabaseServerClient(Astro.cookies);
+const { data: { session } } = await supabase.auth.getSession();
+const userId = session!.user.id;
+
+// Fetch user's routines
+const { data: routines } = await supabase
+  .from('routines')
+  .select('id, name, goal, estimated_duration, routine_exercises(count)')
+  .eq('user_id', userId)
+  .order('created_at', { ascending: true });
+
+const todayRoutine = routines?.[0] ?? null;
+const nextRoutine = routines?.[1] ?? routines?.[0] ?? null;
+
+// Weekly volume (last 7 days) grouped by day
+const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const today = new Date();
+const weekAgo = new Date();
+weekAgo.setDate(today.getDate() - 6);
+
+const { data: weekSets } = await supabase
+  .from('session_sets')
+  .select('weight, reps, logged_at, workout_sessions!inner(user_id, completed_at)')
+  .eq('workout_sessions.user_id', userId)
+  .eq('completed', true)
+  .not('workout_sessions.completed_at', 'is', null)
+  .gte('logged_at', weekAgo.toISOString());
+
+// Build volume per day-of-week for last 7 days
+const volumeByDate: Record<string, number> = {};
+for (const s of (weekSets || [])) {
+  const d = new Date(s.logged_at).toISOString().split('T')[0];
+  volumeByDate[d] = (volumeByDate[d] || 0) + (s.weight || 0) * (s.reps || 0);
+}
+
+const weekData = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date();
+  d.setDate(today.getDate() - (6 - i));
+  const key = d.toISOString().split('T')[0];
+  const isToday = i === 6;
+  return {
+    day: days[d.getDay()],
+    vol: Math.round(volumeByDate[key] || 0),
+    isToday,
+  };
+});
+
+const maxVol = Math.max(...weekData.map(d => d.vol), 1);
+
+// Streak: consecutive days with at least one completed session going back from today
+const { data: allSessions } = await supabase
+  .from('workout_sessions')
+  .select('completed_at')
+  .eq('user_id', userId)
+  .not('completed_at', 'is', null)
+  .order('completed_at', { ascending: false });
+
+const completedDates = new Set(
+  (allSessions || []).map(s => new Date(s.completed_at!).toISOString().split('T')[0])
+);
+
+let streak = 0;
+const streakCheck = new Date();
+while (true) {
+  const key = streakCheck.toISOString().split('T')[0];
+  if (completedDates.has(key)) {
+    streak++;
+    streakCheck.setDate(streakCheck.getDate() - 1);
+  } else {
+    break;
+  }
+}
+
+// Streak circle: circumference 283, offset = 283 * (1 - streak/30)
+const streakProgress = Math.min(streak / 30, 1);
+const strokeDashoffset = Math.round(283 * (1 - streakProgress));
+
+// Profile name
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('name')
+  .eq('id', userId)
+  .single();
+const userName = profile?.name || session!.user.email?.split('@')[0] || 'Lifter';
+---
+
+<Layout title="Dashboard">
+  <!-- Welcome Header -->
+  <div class="flex flex-col gap-2">
+    <p class="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-gradient">Welcome back, {userName}!</p>
+    <p class="text-muted text-lg font-normal leading-normal">Ready to crush your goals today?</p>
+  </div>
+
+  <!-- Dashboard Grid Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+    <!-- Left Column (65%) -->
+    <div class="lg:col-span-8 flex flex-col gap-6">
+
+      <!-- Today's Routine Card -->
+      {todayRoutine ? (
+        <GlassCard class="p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 transition-all duration-300 hover:border-primary/50 relative overflow-hidden group">
+          <div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div class="flex flex-col gap-2 relative z-10">
+            <h2 class="text-white text-2xl font-bold leading-tight">Today's Routine: {todayRoutine.name}</h2>
+            <p class="text-muted text-base font-normal flex items-center gap-2">
+              <span class="material-symbols-outlined text-sm">schedule</span>
+              Estimated Duration: {todayRoutine.estimated_duration ?? '—'} mins
+            </p>
+          </div>
+          <a
+            href={`/session?routine_id=${todayRoutine.id}`}
+            class="relative z-10 flex w-full sm:w-auto min-w-[140px] cursor-pointer items-center justify-center rounded-lg py-3 px-6 bg-primary text-app-bg text-base font-bold leading-normal transition-all hover:scale-[1.02] hover:bg-primary-hover hover:shadow-[0_0_20px_rgba(60,249,26,0.4)]"
+          >
+            <span class="material-symbols-outlined mr-2">play_arrow</span>
+            Start Session
+          </a>
+        </GlassCard>
+      ) : (
+        <GlassCard class="p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div class="flex flex-col gap-2">
+            <h2 class="text-white text-2xl font-bold leading-tight">No routines yet</h2>
+            <p class="text-muted text-base">Create your first routine to get started.</p>
+          </div>
+          <a
+            href="/routines"
+            class="flex w-full sm:w-auto min-w-[140px] cursor-pointer items-center justify-center rounded-lg py-3 px-6 bg-primary text-app-bg text-base font-bold leading-normal transition-all hover:scale-[1.02]"
+          >
+            <span class="material-symbols-outlined mr-2">add</span>
+            Create Routine
+          </a>
+        </GlassCard>
+      )}
+
+      <!-- Weekly Summary Chart -->
+      <GlassCard class="p-6 flex flex-col gap-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white">Weekly Volume</h3>
+          <div class="flex items-center gap-2 text-sm text-muted">
+            <span class="w-3 h-3 rounded-full bg-accent"></span> kg lifted
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-4 h-[200px] justify-end mt-4 relative">
+          <!-- Y Axis Lines -->
+          <div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+            <div class="w-full border-t border-surface-border/50"></div>
+            <div class="w-full border-t border-surface-border/50"></div>
+            <div class="w-full border-t border-surface-border/50"></div>
+            <div class="w-full border-t border-surface-border/50"></div>
+          </div>
+
+          <!-- Bars -->
+          <div class="flex items-end justify-between w-full h-full relative z-10 px-2 sm:px-6">
+            {weekData.map((item) => {
+              const heightPct = item.vol > 0 ? Math.max((item.vol / maxVol) * 100, 5) : 0;
+              return (
+                <div class="flex flex-col items-center gap-2 group cursor-pointer w-full relative">
+                  <div
+                    class={`w-8 sm:w-12 rounded-t-lg transition-all ${item.vol > 0 ? 'bg-accent/80 group-hover:bg-accent' : 'bg-surface-hover border border-surface-border'}`}
+                    style={`height: ${heightPct}%;`}
+                  >
+                    {item.vol > 0 && (
+                      <div class="opacity-0 group-hover:opacity-100 absolute -top-9 left-1/2 -translate-x-1/2 bg-surface border border-surface-border text-white text-xs py-1 px-2 rounded transition-opacity shadow-lg whitespace-nowrap z-10">
+                        {item.vol.toLocaleString()}kg
+                      </div>
+                    )}
+                  </div>
+                  <span class={`text-xs ${item.isToday ? 'text-white font-medium' : 'text-muted'}`}>{item.day}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+
+    <!-- Right Column (35%) -->
+    <div class="lg:col-span-4 flex flex-col gap-6">
+      <!-- Streak Widget -->
+      <GlassCard class="p-6 flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+        <div class="absolute top-0 right-0 p-4 opacity-20">
+          <span class="material-symbols-outlined text-6xl text-primary">local_fire_department</span>
+        </div>
+        <h3 class="text-lg font-bold text-white w-full text-left z-10">Current Streak</h3>
+
+        <div class="relative w-48 h-48 flex items-center justify-center mt-4 z-10">
+          <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"></circle>
+            <circle
+              class="text-primary drop-shadow-[0_0_8px_rgba(60,249,26,0.6)]"
+              cx="50" cy="50" r="45" fill="none" stroke="currentColor"
+              stroke-width="6" stroke-linecap="round"
+              stroke-dasharray="283"
+              stroke-dashoffset={strokeDashoffset}
+            ></circle>
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-3xl font-bold text-white tracking-tighter">{streak}</span>
+            <span class="text-sm font-medium text-primary uppercase tracking-widest mt-1">Days</span>
+          </div>
+        </div>
+        <p class="text-sm text-muted text-center mt-2 z-10">
+          {streak === 0 ? 'Start today and build momentum!' : streak < 3 ? 'Keep going!' : "You're on fire! Keep the momentum."}
+        </p>
+      </GlassCard>
+
+      <!-- Next Up -->
+      <GlassCard class="p-6 flex flex-col gap-4">
+        <h3 class="text-lg font-bold text-white">Next Up</h3>
+        {nextRoutine ? (
+          <div class="flex items-center justify-between p-3 rounded-lg bg-surface-hover border border-surface-border">
+            <div class="flex items-center gap-3">
+              <div class="p-2 rounded bg-accent/20 text-accent">
+                <span class="material-symbols-outlined text-sm">fitness_center</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-sm font-bold text-white">{nextRoutine.name}</span>
+                <span class="text-xs text-muted capitalize">{nextRoutine.goal}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p class="text-muted text-sm">No routines scheduled.</p>
+        )}
+      </GlassCard>
+    </div>
+  </div>
+</Layout>

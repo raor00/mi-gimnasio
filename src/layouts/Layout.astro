@@ -1,0 +1,45 @@
+---
+import '../styles/global.css';
+import Sidebar from '../components/Sidebar.astro';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>{title} | Mi Gimnasio</title>
+		
+		<!-- Fonts & Icons -->
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+		<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL,GRAD,opsz@100..700,0..1,0,24&display=swap" rel="stylesheet"/>
+	</head>
+	<body class="bg-app-bg text-gray-100 font-display min-h-screen relative overflow-x-hidden">
+		<!-- Decorative Gradient Orbs -->
+		<div class="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-primary/10 blur-[120px] pointer-events-none z-0"></div>
+		<div class="fixed bottom-[-10%] right-[-10%] w-[30vw] h-[30vw] rounded-full bg-accent/10 blur-[120px] pointer-events-none z-0"></div>
+		
+		<div class="relative flex min-h-screen w-full flex-col z-10">
+			<!-- Layout wrapper -->
+			<div class="flex flex-1 flex-col sm:flex-row h-full">
+				<!-- Sidebar (Mobile optimized to Drawer/Hamburger from inside Sidebar.astro) -->
+				<Sidebar />
+
+				<!-- Main Content -->
+				<main class="flex-1 flex flex-col items-center py-8 px-4 sm:px-8 overflow-y-auto">
+					<div class="w-full max-w-[1000px] flex flex-col gap-8">
+						<slot />
+					</div>
+				</main>
+			</div>
+		</div>
+	</body>
+</html>

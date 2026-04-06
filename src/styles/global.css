@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #3cf91a;
+  --color-primary-hover: #4aff26;
+  --color-background-light: #f6f8f5;
+  --color-background-dark: #12230f;
+  --color-app-bg: #050505;
+  --color-surface: rgba(25, 25, 25, 0.4);
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-surface-border: rgba(255, 255, 255, 0.08);
+  --color-accent: #00D4FF;
+  --color-muted: #9CA3AF;
+  
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .text-gradient {
+    /* Using background-clip directly in tailwind or custom class */
+    background: linear-gradient(to right, var(--color-primary), var(--color-accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .glass-card {
+    background-color: var(--color-surface);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--color-surface-border);
+  }
+}
