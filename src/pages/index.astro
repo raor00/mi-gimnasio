@@ -7,6 +7,16 @@ const supabase = supabaseServerClient(Astro.cookies);
 const { data: { session } } = await supabase.auth.getSession();
 const userId = session!.user.id;
 
+// Sesión en progreso (sin completed_at)
+const { data: activeSessions } = await supabase
+  .from('workout_sessions')
+  .select('id, routine_name, started_at')
+  .eq('user_id', userId)
+  .is('completed_at', null)
+  .order('started_at', { ascending: false })
+  .limit(1);
+const activeSession = activeSessions?.[0] ?? null;
+
 // Fetch user's routines
 const { data: routines } = await supabase
   .from('routines')
@@ -95,6 +105,23 @@ const userName = profile?.name || session!.user.email?.split('@')[0] || 'Lifter'
     <p class="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-gradient">Welcome back, {userName}!</p>
     <p class="text-muted text-lg font-normal leading-normal">Ready to crush your goals today?</p>
   </div>
+
+  <!-- Active Session Banner -->
+  {activeSession && (
+    <a
+      href={`/session?session_id=${activeSession.id}`}
+      class="flex items-center justify-between gap-4 px-5 py-4 rounded-xl border border-accent/40 bg-accent/10 hover:bg-accent/15 transition-colors group"
+    >
+      <div class="flex items-center gap-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-accent animate-pulse flex-shrink-0"></span>
+        <div>
+          <p class="text-white font-semibold text-sm">Session in progress — {activeSession.routine_name}</p>
+          <p class="text-accent/70 text-xs mt-0.5">Tap to resume your workout</p>
+        </div>
+      </div>
+      <span class="material-symbols-outlined text-accent group-hover:translate-x-1 transition-transform">arrow_forward</span>
+    </a>
+  )}
 
   <!-- Dashboard Grid Layout -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
