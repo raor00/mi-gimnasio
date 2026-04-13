@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../lib/supabase-server';
+import { normalizeRoutineExercises, normalizeRoutineName } from '../../../lib/workout-utils';
 
 export const GET: APIRoute = async ({ cookies, params }) => {
   const supabase = supabaseServerClient(cookies);
@@ -40,13 +41,27 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
     goal: string;
     exercises: Array<{ exercise_id: string; order_index: number; target_sets: number; target_reps: string }>;
   };
+  const normalizedName = normalizeRoutineName(name);
+  const normalizedExercises = normalizeRoutineExercises(exercises || []);
+
+  if (!normalizedName) {
+    return new Response(JSON.stringify({ error: 'Routine name is required' }), { status: 400 });
+  }
+
+  if (normalizedName.length > 80) {
+    return new Response(JSON.stringify({ error: 'Routine name is too long' }), { status: 400 });
+  }
+
+  if (normalizedExercises.length === 0) {
+    return new Response(JSON.stringify({ error: 'Add at least one exercise' }), { status: 400 });
+  }
 
   const { error: updateError } = await supabase
     .from('routines')
     .update({
-      name: name.trim(),
+      name: normalizedName,
       goal,
-      estimated_duration: exercises.length * 10,
+      estimated_duration: normalizedExercises.length * 10,
       updated_at: new Date().toISOString(),
     })
     .eq('id', params.id!)
@@ -57,8 +72,8 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
   // Replace exercises: delete old, insert new
   await supabase.from('routine_exercises').delete().eq('routine_id', params.id!);
 
-  if (exercises?.length > 0) {
-    const exerciseRows = exercises.map((ex) => ({
+  if (normalizedExercises.length > 0) {
+    const exerciseRows = normalizedExercises.map((ex) => ({
       routine_id: params.id!,
       exercise_id: ex.exercise_id,
       order_index: ex.order_index,

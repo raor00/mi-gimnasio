@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../lib/supabase-server';
+import { hasCompletedSets } from '../../../lib/workout-utils';
 
 export const GET: APIRoute = async ({ cookies, params }) => {
   const supabase = supabaseServerClient(cookies);
@@ -35,9 +36,12 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
       .select('weight, reps, completed')
       .eq('session_id', params.id!);
 
-    total_volume = (sets || [])
-      .filter((s) => s.completed)
-      .reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
+    const completedSets = (sets || []).filter((s) => s.completed);
+    if (!hasCompletedSets(completedSets)) {
+      return new Response(JSON.stringify({ error: 'Complete at least one set before finishing the workout' }), { status: 400 });
+    }
+
+    total_volume = completedSets.reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
   }
 
   const { error } = await supabase
@@ -45,6 +49,7 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
     .update({
       ...body,
       ...(body.completed_at ? { total_volume } : {}),
+      ...(body.completed_at ? { cancelled_at: null } : {}),
     })
     .eq('id', params.id!)
     .eq('user_id', session.user.id);
@@ -52,6 +57,29 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
 
   return new Response(JSON.stringify({ success: true, total_volume }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+export const DELETE: APIRoute = async ({ cookies, params }) => {
+  const supabase = supabaseServerClient(cookies);
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+
+  const { error } = await supabase
+    .from('workout_sessions')
+    .update({
+      cancelled_at: new Date().toISOString(),
+      completed_at: null,
+      total_volume: 0,
+    })
+    .eq('id', params.id!)
+    .eq('user_id', session.user.id)
+    .is('completed_at', null);
+
+  if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+
+  return new Response(JSON.stringify({ success: true }), {
     headers: { 'Content-Type': 'application/json' },
   });
 };

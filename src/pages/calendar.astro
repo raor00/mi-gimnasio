@@ -23,16 +23,16 @@ for (const s of (completedSessions || [])) {
 }
 
 const sessionsJson = JSON.stringify(sessionMap);
-const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const dayNames = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 ---
 
-<Layout title="Calendar">
+<Layout title="Calendario">
   <div class="flex flex-col gap-8 w-full">
     <!-- Header -->
     <header class="flex flex-col sm:flex-row items-start sm:items-end justify-between w-full gap-4">
       <div class="flex flex-col gap-1">
-        <h2 class="text-white text-3xl sm:text-[40px] font-bold leading-tight tracking-wide">Training Calendar</h2>
-        <p class="text-muted text-base">Track your consistency</p>
+        <h2 class="text-white text-3xl sm:text-[40px] font-bold leading-tight tracking-wide">Calendario de entrenamiento</h2>
+        <p class="text-muted text-base">Visualiza tu constancia y tus sesiones completadas.</p>
       </div>
       <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
         <div class="flex items-center gap-4 self-center">
@@ -45,16 +45,16 @@ const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
           </button>
         </div>
         <div class="flex h-10 items-center justify-center rounded-full glass-card p-1 self-center">
-          <button id="view-month" class="h-full px-6 rounded-full text-white bg-surface-hover text-sm font-medium transition-all">Month</button>
-          <button id="view-week" class="h-full px-6 rounded-full text-muted text-sm font-medium transition-all">Week</button>
+          <button id="view-month" class="h-full px-6 rounded-full text-white bg-surface-hover text-sm font-medium transition-all">Mes</button>
+          <button id="view-week" class="h-full px-6 rounded-full text-muted text-sm font-medium transition-all">Semana</button>
         </div>
       </div>
     </header>
 
     <!-- Legend -->
     <div class="flex flex-wrap gap-4 items-center justify-start sm:justify-end text-sm font-mono text-muted">
-      <div class="flex items-center gap-2"><div class="size-2 rounded-full bg-primary shadow-[0_0_8px_rgba(60,249,26,0.5)]"></div> Completed</div>
-      <div class="flex items-center gap-2"><div class="size-2 rounded-full bg-surface-border"></div> Rest day</div>
+      <div class="flex items-center gap-2"><div class="size-2 rounded-full bg-primary shadow-[0_0_8px_rgba(60,249,26,0.5)]"></div> Completado</div>
+      <div class="flex items-center gap-2"><div class="size-2 rounded-full bg-surface-border"></div> Descanso</div>
     </div>
 
     <!-- Calendar -->
@@ -87,7 +87,7 @@ const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 <script define:vars={{ sessionsJson }}>
   const sessionMap = JSON.parse(sessionsJson);
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const TODAY = new Date();
   TODAY.setHours(0,0,0,0);
 
@@ -144,7 +144,7 @@ const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-    label.textContent = `${startOfWeek.toLocaleDateString('en',{month:'short',day:'numeric'})} – ${endOfWeek.toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'})}`;
+      label.textContent = `${startOfWeek.toLocaleDateString('es',{month:'short',day:'numeric'})} – ${endOfWeek.toLocaleDateString('es',{month:'short',day:'numeric',year:'numeric'})}`;
 
     let html = '';
     for (let i = 0; i < 7; i++) {
@@ -179,12 +179,12 @@ const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     const sessions = sessionMap[dateKey];
     if (!sessions || sessions.length === 0) return;
     const date = new Date(dateKey + 'T12:00:00');
-    document.getElementById('detail-title').textContent = date.toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'});
+    document.getElementById('detail-title').textContent = date.toLocaleDateString('es',{weekday:'long',month:'long',day:'numeric'});
     document.getElementById('detail-body').innerHTML = sessions.map(s => `
       <div class="p-3 rounded-lg bg-primary/10 border border-primary/20 flex flex-col gap-1">
         <p class="font-bold text-white">${s.routine_name}</p>
-        ${s.total_volume > 0 ? `<p class="text-sm text-muted">${Math.round(s.total_volume).toLocaleString()} kg total volume</p>` : ''}
-        <p class="text-xs text-muted">${new Date(s.started_at).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})}</p>
+        ${s.total_volume > 0 ? `<p class="text-sm text-muted">${Math.round(s.total_volume).toLocaleString()} kg de volumen total</p>` : ''}
+        <p class="text-xs text-muted">${new Date(s.started_at).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</p>
       </div>`).join('');
     document.getElementById('session-detail').classList.remove('hidden');
   }

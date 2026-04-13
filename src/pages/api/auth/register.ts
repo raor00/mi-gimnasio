@@ -12,7 +12,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const supabase = supabaseServerClient(cookies);
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
   });
@@ -21,6 +21,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect("/register?error=" + encodeURIComponent(error.message));
   }
 
-  // If email confirmations are disabled in Supabase, this auto-logs them in securely since cookies are set natively
-  return redirect("/register?success=true");
+  const hasSession = Boolean(data.session);
+  const status = hasSession ? 'authenticated' : 'confirmation_required';
+
+  return redirect(`/register?success=true&status=${status}`);
 };

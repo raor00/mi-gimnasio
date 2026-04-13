@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.workout_sessions (
   routine_name TEXT        NOT NULL,
   started_at   TIMESTAMPTZ DEFAULT NOW(),
   completed_at TIMESTAMPTZ,            -- NULL = en progreso
+  cancelled_at TIMESTAMPTZ,            -- NULL = activa
   total_volume FLOAT DEFAULT 0,        -- kg totales levantados
   notes        TEXT
 );
@@ -67,9 +68,20 @@ CREATE TABLE IF NOT EXISTS public.session_sets (
   set_number    INT   NOT NULL,
   weight        FLOAT DEFAULT 0,
   reps          INT   DEFAULT 0,
+  rpe           NUMERIC(3,1),
+  rir           INT,
   completed     BOOLEAN DEFAULT FALSE,
   logged_at     TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.workout_sessions
+  ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
+
+ALTER TABLE public.session_sets
+  ADD COLUMN IF NOT EXISTS rpe NUMERIC(3,1);
+
+ALTER TABLE public.session_sets
+  ADD COLUMN IF NOT EXISTS rir INT;
 
 ------------------------------------------------------------
 -- 2. ROW LEVEL SECURITY (RLS)

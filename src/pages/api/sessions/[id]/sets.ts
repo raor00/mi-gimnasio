@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../../lib/supabase-server';
+import { clampNullableMetric, normalizeNumericInput } from '../../../../lib/workout-utils';
 
 export const POST: APIRoute = async ({ cookies, params, request }) => {
   const supabase = supabaseServerClient(cookies);
@@ -7,13 +8,24 @@ export const POST: APIRoute = async ({ cookies, params, request }) => {
   if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const body = await request.json();
-  const { exercise_id, exercise_name, set_number, weight, reps } = body as {
+  const { exercise_id, exercise_name, set_number, weight, reps, rpe, rir } = body as {
     exercise_id: string;
     exercise_name: string;
     set_number: number;
     weight: number;
     reps: number;
+    rpe?: number | null;
+    rir?: number | null;
   };
+
+  if (!exercise_id || !exercise_name || !Number.isFinite(set_number) || set_number <= 0) {
+    return new Response(JSON.stringify({ error: 'Invalid set payload' }), { status: 400 });
+  }
+
+  const safeWeight = normalizeNumericInput(weight, 0, false);
+  const safeReps = normalizeNumericInput(reps, 0, true);
+  const safeRpe = clampNullableMetric(rpe, 10, false);
+  const safeRir = clampNullableMetric(rir, 10, true);
 
   const { data, error } = await supabase
     .from('session_sets')
@@ -22,8 +34,10 @@ export const POST: APIRoute = async ({ cookies, params, request }) => {
       exercise_id,
       exercise_name,
       set_number,
-      weight: weight || 0,
-      reps: reps || 0,
+      weight: safeWeight,
+      reps: safeReps,
+      rpe: safeRpe,
+      rir: safeRir,
       completed: false,
     })
     .select()
@@ -43,17 +57,25 @@ export const PUT: APIRoute = async ({ cookies, request }) => {
   if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const body = await request.json();
-  const { set_id, weight, reps, completed } = body as {
+  const { set_id, weight, reps, completed, rpe, rir } = body as {
     set_id: string;
     weight?: number;
     reps?: number;
     completed?: boolean;
+    rpe?: number | null;
+    rir?: number | null;
   };
 
+  if (!set_id) {
+    return new Response(JSON.stringify({ error: 'set_id is required' }), { status: 400 });
+  }
+
   const updates: Record<string, unknown> = {};
-  if (weight !== undefined) updates.weight = weight;
-  if (reps !== undefined) updates.reps = reps;
+  if (weight !== undefined) updates.weight = normalizeNumericInput(weight, 0, false);
+  if (reps !== undefined) updates.reps = normalizeNumericInput(reps, 0, true);
   if (completed !== undefined) updates.completed = completed;
+  if (rpe !== undefined) updates.rpe = clampNullableMetric(rpe, 10, false);
+  if (rir !== undefined) updates.rir = clampNullableMetric(rir, 10, true);
 
   const { data, error } = await supabase
     .from('session_sets')

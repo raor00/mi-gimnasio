@@ -34,12 +34,33 @@ export const POST: APIRoute = async ({ cookies, request }) => {
   const body = await request.json();
   const { routine_id, routine_name } = body as { routine_id: string; routine_name: string };
 
+  if (!routine_id || !routine_name?.trim()) {
+    return new Response(JSON.stringify({ error: 'routine_id and routine_name are required' }), { status: 400 });
+  }
+
+  const { data: existingSession } = await supabase
+    .from('workout_sessions')
+    .select('id, routine_id, routine_name, started_at')
+    .eq('user_id', session.user.id)
+    .is('completed_at', null)
+    .is('cancelled_at', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingSession) {
+    return new Response(JSON.stringify(existingSession), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const { data, error } = await supabase
     .from('workout_sessions')
     .insert({
       user_id: session.user.id,
       routine_id,
-      routine_name,
+      routine_name: routine_name.trim(),
     })
     .select()
     .single();

@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../lib/supabase-server';
+import { normalizeRoutineExercises, normalizeRoutineName } from '../../../lib/workout-utils';
 
 export const GET: APIRoute = async ({ cookies }) => {
   const supabase = supabaseServerClient(cookies);
@@ -39,26 +40,36 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     goal: string;
     exercises: Array<{ exercise_id: string; order_index: number; target_sets: number; target_reps: string }>;
   };
+  const normalizedName = normalizeRoutineName(name);
+  const normalizedExercises = normalizeRoutineExercises(exercises || []);
 
-  if (!name?.trim()) {
+  if (!normalizedName) {
     return new Response(JSON.stringify({ error: 'Routine name is required' }), { status: 400 });
+  }
+
+  if (normalizedName.length > 80) {
+    return new Response(JSON.stringify({ error: 'Routine name is too long' }), { status: 400 });
+  }
+
+  if (normalizedExercises.length === 0) {
+    return new Response(JSON.stringify({ error: 'Add at least one exercise' }), { status: 400 });
   }
 
   const { data: routine, error: routineError } = await supabase
     .from('routines')
     .insert({
       user_id: session.user.id,
-      name: name.trim(),
+      name: normalizedName,
       goal: goal || 'hypertrophy',
-      estimated_duration: exercises.length * 10,
+      estimated_duration: normalizedExercises.length * 10,
     })
     .select()
     .single();
 
   if (routineError) return new Response(JSON.stringify({ error: routineError.message }), { status: 500 });
 
-  if (exercises?.length > 0) {
-    const exerciseRows = exercises.map((ex) => ({
+  if (normalizedExercises.length > 0) {
+    const exerciseRows = normalizedExercises.map((ex) => ({
       routine_id: routine.id,
       exercise_id: ex.exercise_id,
       order_index: ex.order_index,

@@ -6,6 +6,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
 
+  const normalizeAuthError = (message: string) => {
+    if (message.toLowerCase().includes('email not confirmed')) {
+      return 'Tu correo todavía no está confirmado. Revisa tu bandeja de entrada o desactiva la confirmación de email en Supabase Auth si quieres acceso inmediato en local.';
+    }
+
+    return message;
+  };
+
   if (!email || !password) {
     return redirect("/login?error=" + encodeURIComponent("Ingresa tu correo y contraseña"));
   }
@@ -18,7 +26,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   });
 
   if (error) {
-    return redirect("/login?error=" + encodeURIComponent(error.message));
+    return redirect("/login?error=" + encodeURIComponent(normalizeAuthError(error.message)));
   }
 
   return redirect("/routines");
