@@ -11,10 +11,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   const supabase = supabaseServerClient(cookies);
+  const emailRedirectTo = new URL("/auth/confirm", request.url).toString();
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo,
+    },
   });
 
   if (error) {
