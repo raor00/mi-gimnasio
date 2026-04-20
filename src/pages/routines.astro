@@ -81,9 +81,9 @@ const exercisesJson = JSON.stringify(exercises || []);
             ))}
           </div>
         </div>
-        <div class="flex gap-3">
-          <button type="button" id="btn-cancel" class="px-4 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white transition-colors glass-card motion-button">Limpiar</button>
-          <button type="button" id="btn-save-routine" class="px-4 py-2 rounded-lg text-sm font-bold bg-primary text-app-bg hover:brightness-110 transition-colors motion-button">Guardar rutina</button>
+        <div class="flex w-full flex-wrap gap-3 sm:w-auto sm:flex-nowrap">
+          <button type="button" id="btn-cancel" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white transition-colors glass-card motion-button sm:flex-none">Limpiar</button>
+          <button type="button" id="btn-save-routine" class="flex-1 px-4 py-2 rounded-lg text-sm font-bold bg-primary text-app-bg hover:brightness-110 transition-colors motion-button sm:flex-none">Guardar rutina</button>
         </div>
       </div>
 
@@ -125,11 +125,74 @@ const exercisesJson = JSON.stringify(exercises || []);
 <script is:inline define:vars={{ routinesJson, exercisesJson }}>
   const routines = JSON.parse(routinesJson);
   const exercises = JSON.parse(exercisesJson);
+  const ROUTINE_DRAFT_KEY = 'mi-gimnasio:routine-draft';
 
   let editingRoutineId = null;
   let timelineExercises = [];
   let activeFilter = 'all';
   let feedbackTimeout = null;
+
+  function getSelectedGoal() {
+    const selected = document.querySelector('input[name="routine-goal"]:checked');
+    return selected ? selected.value : 'hypertrophy';
+  }
+
+  function persistRoutineDraft() {
+    try {
+      const nameInput = document.getElementById('routine-name-input');
+      localStorage.setItem(ROUTINE_DRAFT_KEY, JSON.stringify({
+        editingRoutineId,
+        name: nameInput ? nameInput.value : '',
+        goal: getSelectedGoal(),
+        exercises: timelineExercises,
+      }));
+    } catch {}
+  }
+
+  function clearRoutineDraft() {
+    try {
+      localStorage.removeItem(ROUTINE_DRAFT_KEY);
+    } catch {}
+  }
+
+  function restoreRoutineDraft() {
+    try {
+      const raw = localStorage.getItem(ROUTINE_DRAFT_KEY);
+      if (!raw) return;
+
+      const draft = JSON.parse(raw);
+      if (!draft || typeof draft !== 'object') return;
+
+      editingRoutineId = typeof draft.editingRoutineId === 'string' ? draft.editingRoutineId : null;
+      timelineExercises = Array.isArray(draft.exercises) ? draft.exercises : [];
+
+      const nameInput = document.getElementById('routine-name-input');
+      if (nameInput && typeof draft.name === 'string') {
+        nameInput.value = draft.name;
+      }
+
+      const goal = typeof draft.goal === 'string' ? draft.goal : 'hypertrophy';
+      document.querySelectorAll('input[name="routine-goal"]').forEach(function(radio) {
+        radio.checked = radio.value === goal;
+      });
+
+      renderTimeline();
+      renderLibrary(document.getElementById('search-routines').value);
+
+      if ((draft.name || '').trim() || timelineExercises.length > 0) {
+        showBuilderMessage('Recuperamos tu borrador local para que no pierdas cambios.', 'info');
+      }
+    } catch {}
+  }
+
+  async function fetchRoutine(routineId) {
+    const res = await fetch('/api/routines/' + routineId);
+    if (!res.ok) {
+      throw new Error('La rutina se guardó, pero no pudimos refrescar la vista.');
+    }
+
+    return res.json();
+  }
 
   function showBuilderMessage(message, type = 'info') {
     const feedback = document.getElementById('builder-feedback');
@@ -242,9 +305,12 @@ const exercisesJson = JSON.stringify(exercises || []);
           const idx = parseInt(inp.dataset.idx);
           if (inp.dataset.field === 'sets') timelineExercises[idx].target_sets = parseInt(inp.value) || 3;
           if (inp.dataset.field === 'reps') timelineExercises[idx].target_reps = inp.value || '8-12';
+          persistRoutineDraft();
         });
       });
     });
+
+    persistRoutineDraft();
   }
 
   function addExerciseToTimeline(exerciseId, name) {
@@ -277,15 +343,16 @@ const exercisesJson = JSON.stringify(exercises || []);
     document.querySelectorAll('input[name="routine-goal"]').forEach(function(r) { r.checked = r.value === 'hypertrophy'; });
     renderTimeline();
     renderLibrary();
+    clearRoutineDraft();
   }
 
   async function saveRoutine() {
+    const wasEditing = Boolean(editingRoutineId);
     const name = document.getElementById('routine-name-input').value.trim();
     if (!name) { showBuilderMessage('Ingresa un nombre para la rutina.', 'error'); return; }
     if (name.length > 80) { showBuilderMessage('El nombre de la rutina no puede superar 80 caracteres.', 'error'); return; }
     if (timelineExercises.length === 0) { showBuilderMessage('Agrega al menos un ejercicio.', 'error'); return; }
-    const goalEl = document.querySelector('input[name="routine-goal"]:checked');
-    const goal = goalEl ? goalEl.value : 'hypertrophy';
+    const goal = getSelectedGoal();
     const body = {
       name: name, goal: goal,
       exercises: timelineExercises.map(function(ex, i) { return { exercise_id: ex.exercise_id, order_index: i, target_sets: ex.target_sets, target_reps: ex.target_reps }; })
@@ -300,11 +367,36 @@ const exercisesJson = JSON.stringify(exercises || []);
          const data = await res.json().catch(() => ({}));
          throw new Error(data.error || 'No se pudo guardar la rutina.');
        }
-       showBuilderMessage(editingRoutineId ? 'Rutina actualizada correctamente.' : 'Rutina creada correctamente.', 'success');
-       window.location.reload();
-     } catch(err) {
-       showBuilderMessage(err.message || 'Error guardando la rutina. Intenta de nuevo.', 'error');
-       btn.textContent = 'Guardar rutina'; btn.disabled = false;
+       const payload = await res.json().catch(() => ({}));
+       const routineId = editingRoutineId || payload.id;
+       if (!routineId) {
+         throw new Error('La rutina se guardó, pero falta el identificador para refrescarla.');
+       }
+
+       const savedRoutine = await fetchRoutine(routineId);
+       const existingIndex = routines.findIndex(function(r) { return r.id === savedRoutine.id; });
+       if (existingIndex === -1) routines.unshift(savedRoutine);
+       else routines[existingIndex] = savedRoutine;
+
+       editingRoutineId = savedRoutine.id;
+       timelineExercises = (savedRoutine.routine_exercises || [])
+         .sort(function(a, b) { return a.order_index - b.order_index; })
+         .map(function(re) { return { exercise_id: re.exercises.id, name: re.exercises.name, target_sets: re.target_sets, target_reps: re.target_reps }; });
+
+       document.getElementById('routine-name-input').value = savedRoutine.name;
+       document.querySelectorAll('input[name="routine-goal"]').forEach(function(radio) {
+         radio.checked = radio.value === savedRoutine.goal;
+       });
+
+       clearRoutineDraft();
+       renderTimeline();
+       renderLibrary(document.getElementById('search-routines').value);
+       showBuilderMessage(wasEditing ? 'Rutina actualizada correctamente.' : 'Rutina creada correctamente.', 'success');
+       btn.textContent = 'Guardar rutina';
+       btn.disabled = false;
+      } catch(err) {
+        showBuilderMessage(err.message || 'Error guardando la rutina. Intenta de nuevo.', 'error');
+        btn.textContent = 'Guardar rutina'; btn.disabled = false;
      }
    }
 
@@ -328,6 +420,11 @@ const exercisesJson = JSON.stringify(exercises || []);
   document.getElementById('btn-cancel').addEventListener('click', clearBuilder);
   document.getElementById('btn-save-routine').addEventListener('click', saveRoutine);
   document.getElementById('search-routines').addEventListener('input', function(e) { renderLibrary(e.target.value); });
+  document.getElementById('routine-name-input').addEventListener('input', persistRoutineDraft);
+
+  document.querySelectorAll('input[name="routine-goal"]').forEach(function(radio) {
+    radio.addEventListener('change', persistRoutineDraft);
+  });
 
   document.querySelectorAll('.muscle-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -345,4 +442,5 @@ const exercisesJson = JSON.stringify(exercises || []);
   renderLibrary();
   renderExercisePool();
   renderTimeline();
+  restoreRoutineDraft();
 </script>

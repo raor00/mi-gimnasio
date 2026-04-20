@@ -1,0 +1,121 @@
+---
+interface Props {
+  idPrefix: string;
+  containerClass?: string;
+  buttonClass?: string;
+  panelClass?: string;
+}
+
+const {
+  idPrefix,
+  containerClass = '',
+  buttonClass = '',
+  panelClass = '',
+} = Astro.props;
+
+const storageKey = 'mi-gimnasio:weight-converter';
+const rootId = `${idPrefix}-weight-converter`;
+const buttonId = `${idPrefix}-weight-converter-trigger`;
+const panelId = `${idPrefix}-weight-converter-panel`;
+const inputId = `${idPrefix}-weight-converter-input`;
+const resultId = `${idPrefix}-weight-converter-result`;
+const modeLbId = `${idPrefix}-mode-lb-to-kg`;
+const modeKgId = `${idPrefix}-mode-kg-to-lb`;
+---
+
+<div id={rootId} data-weight-converter-root data-storage-key={storageKey} class:list={['relative', containerClass]}>
+  <button
+    id={buttonId}
+    type="button"
+    data-role="trigger"
+    class:list={[
+      'flex items-center gap-2 rounded-full border border-white/10 bg-surface px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl transition hover:border-primary/40 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/50',
+      buttonClass,
+    ]}
+    aria-expanded="false"
+    aria-controls={panelId}
+    aria-label="Abrir calculadora de peso"
+  >
+    <span class="material-symbols-outlined text-[20px]">calculate</span>
+    <span class="hidden sm:inline">Peso</span>
+  </button>
+
+  <section
+    id={panelId}
+    data-role="panel"
+    class:list={[
+      'absolute right-0 top-full z-50 mt-2 hidden w-[min(calc(100vw-1rem),22rem)] rounded-2xl border border-white/10 bg-[#090909]/95 p-4 shadow-[0_20px_45px_rgba(0,0,0,0.45)] backdrop-blur-2xl',
+      panelClass,
+    ]}
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby={`${idPrefix}-weight-converter-title`}
+  >
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p id={`${idPrefix}-weight-converter-title`} class="text-sm font-bold text-white">Conversor de peso</p>
+        <p class="mt-1 text-xs text-muted">Pasá de libras a kilos o al revés al instante.</p>
+      </div>
+      <button
+        type="button"
+        data-close-converter
+        class="rounded-full border border-white/10 p-2 text-white/70 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/50"
+        aria-label="Cerrar calculadora"
+      >
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </div>
+
+    <div class="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-white/5 p-1">
+      <label class="cursor-pointer">
+        <input id={modeLbId} class="peer sr-only" type="radio" name={`${idPrefix}-weight-mode`} value="lb-to-kg" checked />
+        <span class="flex items-center justify-center rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white/60 transition peer-checked:bg-primary peer-checked:text-black">lb → kg</span>
+      </label>
+      <label class="cursor-pointer">
+        <input id={modeKgId} class="peer sr-only" type="radio" name={`${idPrefix}-weight-mode`} value="kg-to-lb" />
+        <span class="flex items-center justify-center rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white/60 transition peer-checked:bg-primary peer-checked:text-black">kg → lb</span>
+      </label>
+    </div>
+
+    <div class="mt-4 grid gap-3">
+      <label class="flex flex-col gap-2 text-sm text-white">
+        <span class="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Valor</span>
+        <div class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+          <input
+            id={inputId}
+            data-role="input"
+            type="text"
+            inputmode="decimal"
+            placeholder="Ej: 135"
+            class="w-full bg-transparent text-lg font-bold text-white outline-none placeholder:text-white/20"
+            aria-describedby={resultId}
+          />
+          <span data-unit-from class="text-sm font-semibold uppercase text-primary">lb</span>
+        </div>
+      </label>
+
+      <button
+        type="button"
+        data-swap-converter
+        class="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:border-accent/40 hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent/40"
+      >
+        <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
+        Intercambiar unidades
+      </button>
+
+      <div class="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-4">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">Resultado</p>
+        <div class="mt-2 flex items-baseline gap-2">
+          <output id={resultId} data-role="result" class="text-3xl font-bold text-white">0.0</output>
+          <span data-unit-to class="text-sm font-semibold uppercase text-primary">kg</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  import { initWeightConverterMenus } from '../lib/weight-converter-controller.ts';
+
+  initWeightConverterMenus();
+</script>

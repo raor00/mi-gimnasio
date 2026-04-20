@@ -1,4 +1,6 @@
 ---
+import WeightConverterMenu from './WeightConverterMenu.astro';
+
 const currentPath = Astro.url.pathname;
 const auth = Astro.locals.auth;
 const session = auth?.session ?? null;
@@ -14,9 +16,17 @@ const initials = auth?.initials ?? 'US';
         <div class="rounded-full size-8 bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xs font-bold">{initials}</div>
         <h1 class="text-white text-base font-medium">Mi Gimnasio</h1>
       </div>
-      <button id="mobile-menu-btn" class="text-white p-1 hover:bg-surface-hover rounded-md transition-colors">
-        <span class="material-symbols-outlined">menu</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <WeightConverterMenu
+          idPrefix="mobile"
+          containerClass="sm:hidden"
+          buttonClass="px-2.5 py-2"
+          panelClass="right-0 w-[min(calc(100vw-1rem),24rem)]"
+        />
+        <button id="mobile-menu-btn" class="text-white p-1 hover:bg-surface-hover rounded-md transition-colors">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+      </div>
     </div>
 
     <!-- Sidebar Drawer -->

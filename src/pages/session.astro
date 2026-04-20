@@ -1,5 +1,7 @@
 ---
 import { supabaseServerClient } from '../lib/supabase-server';
+import WeightConverterMenu from '../components/WeightConverterMenu.astro';
+import { getWeightConverterMountPlan } from '../lib/weight-converter-controller';
 import '../styles/global.css';
 
 const auth = Astro.locals.auth!;
@@ -7,6 +9,7 @@ const supabase = supabaseServerClient(Astro.cookies);
 const userId = auth.userId;
 
 const url = Astro.url;
+const converterMountPlan = getWeightConverterMountPlan({ hasSession: true, isStandaloneSession: true });
 const routineIdParam = url.searchParams.get('routine_id');
 const sessionIdParam = url.searchParams.get('session_id');
 
@@ -156,9 +159,18 @@ const startedAt = workoutSession.started_at;
         <span class="material-symbols-outlined text-xl">close</span>
         <span class="text-sm font-medium tracking-wide">Cancelar</span>
       </button>
-      <div class="glass-card px-4 py-1.5 rounded-full flex items-center gap-2 text-sm text-accent font-mono">
-        <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-        <span id="session-timer">00:00</span>
+      <div class="flex items-center gap-2">
+        {converterMountPlan.standaloneSession && (
+          <WeightConverterMenu
+            idPrefix="session"
+            buttonClass="px-2.5 py-2"
+            panelClass="w-[min(calc(100vw-1rem),24rem)]"
+          />
+        )}
+        <div class="glass-card px-4 py-1.5 rounded-full flex items-center gap-2 text-sm text-accent font-mono">
+          <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+          <span id="session-timer">00:00</span>
+        </div>
       </div>
     </div>
 
@@ -239,7 +251,9 @@ const startedAt = workoutSession.started_at;
   const exercises = JSON.parse(exercisesJson);
   // sets grouped by exercise: { [exerciseId]: [{id, set_number, weight, reps, completed}] }
   const persistedSets = JSON.parse(setsJson);
+  const SESSION_DRAFT_KEY = `mi-gimnasio:session-draft:${workoutSession.id}`;
   let feedbackTimeout = null;
+  let currentExerciseIndex = 0;
 
   function showSessionMessage(message, type = 'info') {
     const feedback = document.getElementById('session-feedback');
@@ -270,7 +284,6 @@ const startedAt = workoutSession.started_at;
     document.getElementById('cancel-session-modal').classList.remove('flex');
   }
 
-  let currentExerciseIndex = 0;
   // sets[exerciseId] = array of set objects
   const sets = {};
   exercises.forEach(ex => {
@@ -279,6 +292,59 @@ const startedAt = workoutSession.started_at;
       id: null, set_number: i + 1, weight: 0, reps: 10, rpe: null, rir: null, completed: false
     }));
   });
+
+  function normalizeDraftSet(set, index) {
+    const weight = Number(set?.weight);
+    const reps = Number(set?.reps);
+    const rpe = set?.rpe === '' || set?.rpe === undefined ? null : Number(set?.rpe);
+    const rir = set?.rir === '' || set?.rir === undefined ? null : Number(set?.rir);
+
+    return {
+      id: typeof set?.id === 'string' ? set.id : null,
+      set_number: Number.isFinite(Number(set?.set_number)) ? Number(set.set_number) : index + 1,
+      weight: Number.isFinite(weight) ? weight : 0,
+      reps: Number.isFinite(reps) ? reps : 10,
+      rpe: Number.isFinite(rpe) ? rpe : null,
+      rir: Number.isFinite(rir) ? rir : null,
+      completed: Boolean(set?.completed),
+    };
+  }
+
+  function persistSessionDraft() {
+    try {
+      localStorage.setItem(SESSION_DRAFT_KEY, JSON.stringify({
+        currentExerciseIndex,
+        sets,
+      }));
+    } catch {}
+  }
+
+  function clearSessionDraft() {
+    try {
+      localStorage.removeItem(SESSION_DRAFT_KEY);
+    } catch {}
+  }
+
+  function restoreSessionDraft() {
+    try {
+      const raw = localStorage.getItem(SESSION_DRAFT_KEY);
+      if (!raw) return;
+
+      const draft = JSON.parse(raw);
+      if (!draft || typeof draft !== 'object') return;
+
+      Object.entries(draft.sets || {}).forEach(([exerciseId, draftSets]) => {
+        if (!Array.isArray(draftSets) || !sets[exerciseId]) return;
+        sets[exerciseId] = draftSets.map((set, index) => normalizeDraftSet(set, index));
+      });
+
+      if (Number.isInteger(draft.currentExerciseIndex)) {
+        currentExerciseIndex = Math.max(0, Math.min(exercises.length - 1, draft.currentExerciseIndex));
+      }
+
+      showSessionMessage('Recuperamos tu progreso local para que no pierdas cambios.', 'info');
+    } catch {}
+  }
 
   // ─── Session Timer ────────────────────────────────────────────────
   const timerEl = document.getElementById('session-timer');
@@ -345,6 +411,7 @@ const startedAt = workoutSession.started_at;
     tabs.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         currentExerciseIndex = parseInt(btn.dataset.tab);
+        persistSessionDraft();
         renderCurrentExercise();
       });
     });
@@ -438,6 +505,7 @@ const startedAt = workoutSession.started_at;
           if (field === 'rir') newVal = Math.min(10, newVal);
           input.value = field === 'weight' || field === 'rpe' ? newVal.toFixed(1) : String(Math.round(newVal));
           sets[ex.id][idx][field] = parseFloat(input.value);
+          persistSessionDraft();
         });
       });
 
@@ -448,6 +516,7 @@ const startedAt = workoutSession.started_at;
           const field = inp.dataset.field;
           if (!inp.value.trim()) {
             sets[ex.id][idx][field] = null;
+            persistSessionDraft();
             return;
           }
           let value = parseFloat(inp.value) || 0;
@@ -456,6 +525,7 @@ const startedAt = workoutSession.started_at;
           if (field === 'reps') value = Math.max(0, Math.round(value));
           sets[ex.id][idx][field] = value;
           inp.value = field === 'weight' || field === 'rpe' ? value.toFixed(1) : String(value);
+          persistSessionDraft();
         });
       });
 
@@ -475,6 +545,7 @@ const startedAt = workoutSession.started_at;
           if (!updateRes.ok) {
             showSessionMessage('No se pudo guardar la serie. Intenta de nuevo.', 'error');
             s.completed = false;
+            persistSessionDraft();
             renderSets(ex);
             return;
           }
@@ -496,6 +567,7 @@ const startedAt = workoutSession.started_at;
           if (!res.ok) {
             showSessionMessage('No se pudo guardar la serie. Intenta de nuevo.', 'error');
             s.completed = false;
+            persistSessionDraft();
             renderSets(ex);
             return;
           }
@@ -506,6 +578,7 @@ const startedAt = workoutSession.started_at;
           };
         }
 
+        persistSessionDraft();
         renderSets(ex);
         renderTabs();
         if (e.target.checked) startRestTimer();
@@ -526,6 +599,7 @@ const startedAt = workoutSession.started_at;
       rir: exSets[exSets.length - 1]?.rir ?? null,
       completed: false
     });
+    persistSessionDraft();
     renderSets(ex);
   });
 
@@ -543,6 +617,7 @@ const startedAt = workoutSession.started_at;
       return;
     }
 
+    clearSessionDraft();
     window.location.href = '/';
   });
 
@@ -550,6 +625,7 @@ const startedAt = workoutSession.started_at;
   document.getElementById('btn-next-exercise').addEventListener('click', () => {
     if (currentExerciseIndex < exercises.length - 1) {
       currentExerciseIndex++;
+      persistSessionDraft();
       stopRestTimer();
       renderCurrentExercise();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -590,9 +666,11 @@ const startedAt = workoutSession.started_at;
       return;
     }
 
+    clearSessionDraft();
     window.location.href = '/';
   });
 
   // ─── Init ─────────────────────────────────────────────────────────
+  restoreSessionDraft();
   renderCurrentExercise();
 </script>
