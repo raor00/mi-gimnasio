@@ -2,16 +2,16 @@ import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../lib/supabase-server';
 import { hasCompletedSets } from '../../../lib/workout-utils';
 
-export const GET: APIRoute = async ({ cookies, params }) => {
+export const GET: APIRoute = async ({ cookies, params, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const { data, error } = await supabase
     .from('workout_sessions')
     .select(`*, session_sets (*)`)
     .eq('id', params.id!)
-    .eq('user_id', session.user.id)
+    .eq('user_id', userId)
     .single();
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 404 });
@@ -21,10 +21,10 @@ export const GET: APIRoute = async ({ cookies, params }) => {
   });
 };
 
-export const PUT: APIRoute = async ({ cookies, params, request }) => {
+export const PUT: APIRoute = async ({ cookies, params, request, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const body = await request.json();
 
@@ -52,7 +52,7 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
       ...(body.completed_at ? { cancelled_at: null } : {}),
     })
     .eq('id', params.id!)
-    .eq('user_id', session.user.id);
+    .eq('user_id', userId);
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
 
@@ -61,10 +61,10 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
   });
 };
 
-export const DELETE: APIRoute = async ({ cookies, params }) => {
+export const DELETE: APIRoute = async ({ cookies, params, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const { error } = await supabase
     .from('workout_sessions')
@@ -74,7 +74,7 @@ export const DELETE: APIRoute = async ({ cookies, params }) => {
       total_volume: 0,
     })
     .eq('id', params.id!)
-    .eq('user_id', session.user.id)
+    .eq('user_id', userId)
     .is('completed_at', null);
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });

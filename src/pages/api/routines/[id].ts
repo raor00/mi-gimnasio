@@ -2,10 +2,10 @@ import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../lib/supabase-server';
 import { normalizeRoutineExercises, normalizeRoutineName } from '../../../lib/workout-utils';
 
-export const GET: APIRoute = async ({ cookies, params }) => {
+export const GET: APIRoute = async ({ cookies, params, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const { data, error } = await supabase
     .from('routines')
@@ -20,7 +20,7 @@ export const GET: APIRoute = async ({ cookies, params }) => {
       )
     `)
     .eq('id', params.id!)
-    .eq('user_id', session.user.id)
+    .eq('user_id', userId)
     .single();
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 404 });
@@ -30,10 +30,10 @@ export const GET: APIRoute = async ({ cookies, params }) => {
   });
 };
 
-export const PUT: APIRoute = async ({ cookies, params, request }) => {
+export const PUT: APIRoute = async ({ cookies, params, request, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const body = await request.json();
   const { name, goal, exercises } = body as {
@@ -65,7 +65,7 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
       updated_at: new Date().toISOString(),
     })
     .eq('id', params.id!)
-    .eq('user_id', session.user.id);
+    .eq('user_id', userId);
 
   if (updateError) return new Response(JSON.stringify({ error: updateError.message }), { status: 500 });
 
@@ -89,16 +89,16 @@ export const PUT: APIRoute = async ({ cookies, params, request }) => {
   });
 };
 
-export const DELETE: APIRoute = async ({ cookies, params }) => {
+export const DELETE: APIRoute = async ({ cookies, params, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const { error } = await supabase
     .from('routines')
     .delete()
     .eq('id', params.id!)
-    .eq('user_id', session.user.id);
+    .eq('user_id', userId);
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
 

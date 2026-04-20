@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../lib/supabase-server';
 
-export const GET: APIRoute = async ({ cookies, url }) => {
+export const GET: APIRoute = async ({ cookies, url, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const range = url.searchParams.get('range') || '30d';
   const days = range === '7d' ? 7 : range === '6m' ? 180 : 30;
@@ -23,7 +23,7 @@ export const GET: APIRoute = async ({ cookies, url }) => {
       exercises (muscle_groups),
       workout_sessions!inner (user_id, completed_at)
     `)
-    .eq('workout_sessions.user_id', session.user.id)
+    .eq('workout_sessions.user_id', userId)
     .not('workout_sessions.completed_at', 'is', null)
     .eq('completed', true)
     .gte('logged_at', since.toISOString());

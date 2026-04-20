@@ -2,10 +2,10 @@ import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../lib/supabase-server';
 import { normalizeRoutineExercises, normalizeRoutineName } from '../../../lib/workout-utils';
 
-export const GET: APIRoute = async ({ cookies }) => {
+export const GET: APIRoute = async ({ cookies, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const { data, error } = await supabase
     .from('routines')
@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ cookies }) => {
         exercises (id, name, muscle_groups, category, equipment)
       )
     `)
-    .eq('user_id', session.user.id)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
@@ -29,10 +29,10 @@ export const GET: APIRoute = async ({ cookies }) => {
   });
 };
 
-export const POST: APIRoute = async ({ cookies, request }) => {
+export const POST: APIRoute = async ({ cookies, request, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const body = await request.json();
   const { name, goal, exercises } = body as {
@@ -58,7 +58,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
   const { data: routine, error: routineError } = await supabase
     .from('routines')
     .insert({
-      user_id: session.user.id,
+      user_id: userId,
       name: normalizedName,
       goal: goal || 'hypertrophy',
       estimated_duration: normalizedExercises.length * 10,

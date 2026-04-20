@@ -2,13 +2,13 @@ import type { APIRoute } from 'astro';
 import { supabaseServerClient } from '../../../../lib/supabase-server';
 import { clampNullableMetric, normalizeNumericInput } from '../../../../lib/workout-utils';
 
-export const POST: APIRoute = async ({ cookies, params, request }) => {
+export const POST: APIRoute = async ({ cookies, params, request, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const body = await request.json();
-  const { exercise_id, exercise_name, set_number, weight, reps, rpe, rir } = body as {
+  const { exercise_id, exercise_name, set_number, weight, reps, rpe, rir, completed } = body as {
     exercise_id: string;
     exercise_name: string;
     set_number: number;
@@ -16,6 +16,7 @@ export const POST: APIRoute = async ({ cookies, params, request }) => {
     reps: number;
     rpe?: number | null;
     rir?: number | null;
+    completed?: boolean;
   };
 
   if (!exercise_id || !exercise_name || !Number.isFinite(set_number) || set_number <= 0) {
@@ -38,7 +39,7 @@ export const POST: APIRoute = async ({ cookies, params, request }) => {
       reps: safeReps,
       rpe: safeRpe,
       rir: safeRir,
-      completed: false,
+      completed: Boolean(completed),
     })
     .select()
     .single();
@@ -51,10 +52,10 @@ export const POST: APIRoute = async ({ cookies, params, request }) => {
   });
 };
 
-export const PUT: APIRoute = async ({ cookies, request }) => {
+export const PUT: APIRoute = async ({ cookies, request, locals }) => {
   const supabase = supabaseServerClient(cookies);
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const userId = locals.auth?.userId;
+  if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const body = await request.json();
   const { set_id, weight, reps, completed, rpe, rir } = body as {

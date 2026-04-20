@@ -1,21 +1,9 @@
 ---
-import { supabaseServerClient } from '../lib/supabase-server';
-
 const currentPath = Astro.url.pathname;
-
-const supabase = supabaseServerClient(Astro.cookies);
-const { data: { session } } = await supabase.auth.getSession();
-
-let displayName = 'Usuario';
-if (session) {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('name')
-    .eq('id', session.user.id)
-    .single();
-  displayName = profile?.name || session.user.email?.split('@')[0] || 'Usuario';
-}
-const initials = displayName.slice(0, 2).toUpperCase();
+const auth = Astro.locals.auth;
+const session = auth?.session ?? null;
+const displayName = auth?.displayName ?? 'Usuario';
+const initials = auth?.initials ?? 'US';
 ---
 
 {session && (

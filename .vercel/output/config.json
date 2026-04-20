@@ -1,0 +1,104 @@
+{
+	"version": 3,
+	"routes": [
+		{
+			"handle": "filesystem"
+		},
+		{
+			"src": "^/_astro/(.*)$",
+			"headers": {
+				"cache-control": "public, max-age=31536000, immutable"
+			},
+			"continue": true
+		},
+		{
+			"src": "^/_server-islands/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/_image/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/auth/register/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/auth/signin/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/auth/signout/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/exercises/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/routines/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/routines/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/sessions/([^/]+?)/sets/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/sessions/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/sessions/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/stats/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/auth/confirm/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/calendar/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/login/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/register/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/routines/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/session/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/statistics/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/404/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/.*$",
+			"dest": "_render",
+			"status": 404
+		}
+	]
+}
