@@ -1,4 +1,4 @@
-import { s as supabaseServerClient } from './supabase-server_DmlcIR_W.mjs';
+import { s as supabaseServerClient } from './supabase-server_C-QUcOYR.mjs';
 
 const POST = async ({ request, cookies, redirect }) => {
   const formData = await request.formData();

@@ -1,4 +1,4 @@
-import { s as supabaseServerClient } from './supabase-server_DmlcIR_W.mjs';
+import { s as supabaseServerClient } from './supabase-server_C-QUcOYR.mjs';
 import { c as clampNullableMetric, b as normalizeNumericInput } from './workout-utils_kQPgPin9.mjs';
 
 const POST = async ({ cookies, params, request, locals }) => {

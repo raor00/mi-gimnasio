@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
+import { getSupabaseConfig } from './supabase-config';
 
 /**
  * Creates securely integrated Supabase client configured to use the server's cookies.
@@ -7,9 +8,11 @@ import type { AstroCookies } from 'astro';
  * ONLY TO BE USED inside `.astro` files frontmatter, middleware, or `api` routes where Astro.cookies is accessible.
  */
 export const supabaseServerClient = (cookies: AstroCookies) => {
+  const { url, anonKey } = getSupabaseConfig();
+
   return createServerClient(
-    import.meta.env.PUBLIC_SUPABASE_URL,
-    import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+    url,
+    anonKey,
     {
       cookies: {
         get(key: string) {

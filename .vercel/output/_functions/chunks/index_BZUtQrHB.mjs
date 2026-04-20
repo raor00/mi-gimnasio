@@ -1,9 +1,9 @@
 import { c as createComponent } from './astro-component_BYjAEXvK.mjs';
 import 'piccolore';
 import { Q as renderTemplate, B as maybeRenderHead, a3 as addAttribute } from './sequence_CEhBxCfK.mjs';
-import { r as renderComponent } from './entrypoint_C00J0Ypq.mjs';
-import { $ as $$Layout, a as $$GlassCard } from './GlassCard_DtCRIxwO.mjs';
-import { s as supabaseServerClient } from './supabase-server_DmlcIR_W.mjs';
+import { r as renderComponent } from './entrypoint_CUJOs-4B.mjs';
+import { $ as $$Layout, a as $$GlassCard } from './GlassCard_J3z-rMzJ.mjs';
+import { s as supabaseServerClient } from './supabase-server_C-QUcOYR.mjs';
 
 const $$Index = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$props, $$slots);

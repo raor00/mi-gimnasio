@@ -37,6 +37,11 @@ Variables necesarias:
 - `PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+También se aceptan como fallback del lado servidor:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
 ## Setup
 
 1. Instala dependencias:

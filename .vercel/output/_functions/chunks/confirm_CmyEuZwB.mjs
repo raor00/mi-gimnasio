@@ -1,4 +1,4 @@
-import { s as supabaseServerClient } from './supabase-server_DmlcIR_W.mjs';
+import { s as supabaseServerClient } from './supabase-server_C-QUcOYR.mjs';
 
 const GET = async ({ url, cookies, redirect }) => {
   const tokenHash = url.searchParams.get("token_hash");

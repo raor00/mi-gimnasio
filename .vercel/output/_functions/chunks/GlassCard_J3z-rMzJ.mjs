@@ -1,7 +1,7 @@
 import { c as createComponent } from './astro-component_BYjAEXvK.mjs';
 import 'piccolore';
 import { T as createRenderInstruction, F as Fragment, Q as renderTemplate, B as maybeRenderHead, a3 as addAttribute, b9 as renderHead, ba as renderSlot } from './sequence_CEhBxCfK.mjs';
-import { r as renderComponent } from './entrypoint_C00J0Ypq.mjs';
+import { r as renderComponent } from './entrypoint_CUJOs-4B.mjs';
 /* empty css                 */
 import 'clsx';
 

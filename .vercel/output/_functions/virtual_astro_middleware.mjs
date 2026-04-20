@@ -1,7 +1,7 @@
 import { a7 as defineMiddleware, ag as sequence } from './chunks/sequence_CEhBxCfK.mjs';
 import 'piccolore';
 import 'clsx';
-import { s as supabaseServerClient } from './chunks/supabase-server_DmlcIR_W.mjs';
+import { s as supabaseServerClient } from './chunks/supabase-server_C-QUcOYR.mjs';
 
 const PUBLIC_ROUTES = ["/login", "/register", "/auth/confirm"];
 const API_AUTH_PREFIX = "/api/auth/";

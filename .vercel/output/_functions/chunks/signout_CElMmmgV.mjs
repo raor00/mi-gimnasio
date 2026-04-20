@@ -1,4 +1,4 @@
-import { s as supabaseServerClient } from './supabase-server_DmlcIR_W.mjs';
+import { s as supabaseServerClient } from './supabase-server_C-QUcOYR.mjs';
 
 const GET = async ({ cookies, redirect }) => {
   const supabase = supabaseServerClient(cookies);

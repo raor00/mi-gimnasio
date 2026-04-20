@@ -2,7 +2,7 @@ import { c as createComponent } from './astro-component_BYjAEXvK.mjs';
 import 'piccolore';
 import { Q as renderTemplate, b8 as defineScriptVars, b9 as renderHead } from './sequence_CEhBxCfK.mjs';
 import 'clsx';
-import { s as supabaseServerClient } from './supabase-server_DmlcIR_W.mjs';
+import { s as supabaseServerClient } from './supabase-server_C-QUcOYR.mjs';
 /* empty css                 */
 
 var __freeze = Object.freeze;

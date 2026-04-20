@@ -1,4 +1,4 @@
-import { s as supabaseServerClient } from './supabase-server_DmlcIR_W.mjs';
+import { s as supabaseServerClient } from './supabase-server_C-QUcOYR.mjs';
 import { h as hasCompletedSets } from './workout-utils_kQPgPin9.mjs';
 
 const GET = async ({ cookies, params, locals }) => {
