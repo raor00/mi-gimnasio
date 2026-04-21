@@ -1,0 +1,102 @@
+---
+import GlassCard from './GlassCard.astro';
+import type { PredictedPR, RecoveryStatus, RecommendedRoutine, RecentPR } from '../lib/predictions.ts';
+
+interface Props {
+  nextPr: PredictedPR | null;
+  recovery: RecoveryStatus[];
+  recommendedRoutine: RecommendedRoutine;
+  recentPrs?: RecentPR[];
+  overtrainingMessage?: string;
+}
+
+const { nextPr, recovery, recommendedRoutine, recentPrs = [], overtrainingMessage = '' } = Astro.props;
+const visibleRecovery = recovery.slice(0, 3);
+---
+
+<section aria-labelledby="dashboard-predictions-title" class="space-y-3">
+  <div>
+    <h2 id="dashboard-predictions-title" class="text-lg font-bold text-white sm:text-xl">Predicciones</h2>
+    <p class="text-sm text-muted">Tres señales rápidas para decidir tu siguiente sesión.</p>
+  </div>
+
+  <div class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible">
+    <GlassCard class="fade-in-up min-w-[17rem] snap-start p-4 sm:min-w-0" style="animation-delay:240ms; animation-fill-mode:both;">
+      <article class="space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="flex size-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/12 text-primary">
+            <span class="material-symbols-outlined" aria-hidden="true">show_chart</span>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white">Próximo PR</h3>
+            <p class="text-sm text-muted">Proyección lineal simple</p>
+          </div>
+        </div>
+
+        {nextPr ? (
+          <>
+            <p class="text-3xl font-bold tracking-tight text-white">{nextPr.predictedWeight.toLocaleString()} kg</p>
+            <p class="text-sm leading-5 text-white/75">Tu mejor registro actual es {nextPr.lastWeight.toLocaleString()} kg y la tendencia va <span class="font-semibold text-primary">{nextPr.trend === 'up' ? 'al alza' : 'estable'}</span>.</p>
+          </>
+        ) : (
+          <p class="text-sm leading-5 text-white/75">Necesitas al menos dos registros del mismo ejercicio para proyectar tu siguiente PR.</p>
+        )}
+
+        {recentPrs[0] && <p class="text-xs font-medium text-primary">Último PR: {recentPrs[0].exerciseName} (+{recentPrs[0].increase} kg)</p>}
+      </article>
+    </GlassCard>
+
+    <GlassCard class="fade-in-up min-w-[17rem] snap-start p-4 sm:min-w-0" style="animation-delay:300ms; animation-fill-mode:both;">
+      <article class="space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="flex size-10 items-center justify-center rounded-2xl border border-accent/20 bg-accent/12 text-accent">
+            <span class="material-symbols-outlined" aria-hidden="true">neurology</span>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white">Recuperación muscular</h3>
+            <p class="text-sm text-muted">Basada en tu historial reciente</p>
+          </div>
+        </div>
+
+        {visibleRecovery.length > 0 ? (
+          <ul class="space-y-2.5">
+            {visibleRecovery.map((item) => (
+              <li class="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/4 px-3 py-2.5">
+                <div>
+                  <p class="font-medium capitalize text-white">{item.muscleGroup}</p>
+                  <p class="text-xs text-muted">Hace {item.daysSince} día{item.daysSince === 1 ? '' : 's'}</p>
+                </div>
+                <span class={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.status === 'recovering' ? 'bg-amber-400/15 text-amber-300' : item.status === 'ready' ? 'bg-accent/15 text-accent' : 'bg-primary/15 text-primary'}`}>
+                  {item.status === 'recovering' ? 'Recuperando' : item.status === 'ready' ? 'Listo' : 'Muy fresco'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-sm leading-5 text-white/75">Todavía no hay suficiente historial para calcular recuperación muscular.</p>
+        )}
+      </article>
+    </GlassCard>
+
+    <GlassCard class="fade-in-up min-w-[17rem] snap-start p-4 sm:min-w-0" style="animation-delay:360ms; animation-fill-mode:both;">
+      <article class="space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-white">
+            <span class="material-symbols-outlined" aria-hidden="true">fitness_center</span>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white">Rutina sugerida</h3>
+            <p class="text-sm text-muted">Equilibrio entre fatiga y descanso</p>
+          </div>
+        </div>
+
+        <p class="text-2xl font-bold tracking-tight text-white">{recommendedRoutine.name}</p>
+        <p class="text-sm leading-5 text-white/75">{recommendedRoutine.reason}</p>
+
+        {overtrainingMessage && (
+          <p class="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5 text-sm text-amber-100">{overtrainingMessage}</p>
+        )}
+      </article>
+    </GlassCard>
+  </div>
+</section>

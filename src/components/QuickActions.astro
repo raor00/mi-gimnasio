@@ -1,0 +1,38 @@
+---
+interface Props {
+  startHref: string;
+}
+
+const { startHref } = Astro.props;
+
+const actions = [
+  { href: startHref, label: 'Empezar rutina', description: 'Abre tu siguiente sesión', icon: 'play_arrow' },
+  { href: '/calendar', label: 'Ver calendario', description: 'Revisa tus sesiones planeadas', icon: 'calendar_month' },
+  { href: '/statistics', label: 'Estadísticas', description: 'Analiza volumen y PRs', icon: 'bar_chart' },
+];
+---
+
+<section aria-labelledby="dashboard-quick-actions" class="space-y-3">
+  <div>
+    <h2 id="dashboard-quick-actions" class="text-lg font-bold text-white sm:text-xl">Acciones rápidas</h2>
+    <p class="text-sm text-muted">Atajos pensados para usarse con una sola mano.</p>
+  </div>
+
+  <div class="flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible">
+    {actions.map((action, index) => (
+      <a
+        href={action.href}
+        class="dashboard-focus-ring fade-in-up motion-button flex min-h-11 min-w-[15rem] items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-3 py-3 text-left sm:min-w-0"
+        style={`animation-delay:${420 + index * 60}ms; animation-fill-mode:both;`}
+      >
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/8 text-primary">
+          <span class="material-symbols-outlined" aria-hidden="true">{action.icon}</span>
+        </div>
+        <div>
+          <p class="font-semibold text-white">{action.label}</p>
+          <p class="text-xs text-white/65 sm:text-sm">{action.description}</p>
+        </div>
+      </a>
+    ))}
+  </div>
+</section>

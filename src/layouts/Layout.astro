@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import BottomNav from '../components/BottomNav.astro';
 import Sidebar from '../components/Sidebar.astro';
 import WeightConverterMenu from '../components/WeightConverterMenu.astro';
 import { getWeightConverterMountPlan } from '../lib/weight-converter-controller';
@@ -44,16 +45,17 @@ const converterMountPlan = getWeightConverterMountPlan({ hasSession: Boolean(Ast
 			)}
 			<!-- Layout wrapper -->
 			<div class="flex flex-1 flex-col sm:flex-row h-full">
-				<!-- Sidebar (Mobile optimized to Drawer/Hamburger from inside Sidebar.astro) -->
 				<Sidebar />
 
 				<!-- Main Content -->
-				<main class="flex-1 min-w-0 flex flex-col items-center py-6 px-4 sm:px-8 overflow-y-auto">
-					<div class="w-full min-w-0 max-w-[1000px] flex flex-col gap-8">
+				<main class="flex-1 min-w-0 flex flex-col items-center overflow-y-auto px-4 pb-28 pt-6 sm:px-8 sm:pb-8">
+					<div class="w-full min-w-0 max-w-[1000px] flex flex-col gap-6 sm:gap-8">
 						<slot />
 					</div>
 				</main>
 			</div>
+
+			{Astro.locals.auth?.session && <BottomNav />}
 		</div>
 	</body>
 </html>

@@ -1,0 +1,45 @@
+---
+import GlassCard from './GlassCard.astro';
+import type { BannerState } from '../lib/predictions.ts';
+
+interface Props {
+  state: BannerState;
+}
+
+const { state } = Astro.props;
+
+const toneClasses = {
+  primary: 'border-primary/30 bg-primary/8',
+  accent: 'border-primary/30 bg-primary/8',
+  warning: 'border-primary/25 bg-primary/7',
+};
+
+const iconClasses = {
+  primary: 'text-primary',
+  accent: 'text-primary',
+  warning: 'text-primary',
+};
+---
+
+<GlassCard class={`slide-in-right p-4 sm:p-5 ${toneClasses[state.tone]}`}>
+  <section aria-live="polite" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-start gap-3">
+      <div class={`flex size-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 ${iconClasses[state.tone]}`}>
+        <span class="material-symbols-outlined" aria-hidden="true">{state.icon}</span>
+      </div>
+      <div class="space-y-1">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Insight inteligente</p>
+        <h2 class="text-lg font-bold text-white sm:text-xl">{state.title}</h2>
+        <p class="max-w-2xl text-sm leading-5 text-white/72">{state.description}</p>
+      </div>
+    </div>
+
+    <a
+      href={state.cta.href}
+      class="dashboard-focus-ring motion-button inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary px-3.5 py-2.5 text-sm font-semibold text-app-bg shadow-[0_10px_30px_rgba(60,249,26,0.18)]"
+    >
+      <span>{state.cta.label}</span>
+      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">arrow_forward</span>
+    </a>
+  </section>
+</GlassCard>
