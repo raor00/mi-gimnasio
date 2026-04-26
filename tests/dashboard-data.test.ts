@@ -18,6 +18,7 @@ test('buildDashboardViewModel convierte queries vacías en empty states amigable
     sessions: [],
     recentSets: [],
     historySets: [],
+    latestProgressLog: null,
   });
 
   assert.equal(result.banner.kind, 'default');
@@ -70,6 +71,13 @@ test('buildDashboardViewModel compone KPIs e insights con datos reales', () => {
       { logged_at: isoDaysAgo(0), weight: 100, reps: 5, completed: true, exercise_name: 'Bench Press', exercises: { muscle_groups: ['chest'] } },
       { logged_at: isoDaysAgo(7), weight: 95, reps: 5, completed: true, exercise_name: 'Bench Press', exercises: { muscle_groups: ['chest'] } },
     ],
+    latestProgressLog: {
+      log_date: new Date().toISOString().split('T')[0],
+      body_weight_kg: 79.4,
+      fatigue_level: 8,
+      energy_level: 3,
+      symptoms: ['Dolor de espalda'],
+    },
   });
 
   assert.equal(result.kpis.weeklyVolume.total, 1040);
@@ -78,14 +86,22 @@ test('buildDashboardViewModel compone KPIs e insights con datos reales', () => {
   assert.equal(result.kpis.recentPr.value, 'Bench Press');
   assert.equal(result.predictions.nextPr?.predictedWeight, 105);
   assert.equal(result.predictions.recovery[0]?.muscleGroup, 'chest');
-  assert.equal(result.predictions.recommendedRoutine?.id, 'pull');
+  assert.equal(result.predictions.recommendedRoutine?.id, 'push');
+  assert.equal(result.banner.kind, 'recovery-needed');
+  assert.deepEqual(result.progressSnapshot, {
+    bodyWeightKg: 79.4,
+    fatigueLevel: 8,
+    energyLevel: 3,
+    symptoms: ['Dolor de espalda'],
+    logDate: new Date().toISOString().split('T')[0],
+  });
   assert.deepEqual(result.sections.nextRoutine, {
-    id: 'pull',
-    name: 'Pull Day',
-    goalLabel: 'Hipertrofia',
-    muscleGroup: 'back',
-    estimatedDuration: 20,
-    href: '/session?routine_id=pull',
+    id: 'push',
+    name: 'Push Day',
+    goalLabel: 'Fuerza',
+    muscleGroup: 'chest',
+    estimatedDuration: 30,
+    href: '/session?routine_id=push',
   });
   assert.deepEqual(result.sections.recentSessions.map((session) => session.routineName), ['Push Day', 'Pull Day', 'Push Day']);
   assert.equal(result.sections.recentSessions[0]?.volumeLabel, '1,000 kg');
@@ -116,6 +132,7 @@ test('buildDashboardViewModel prioriza la sesión activa y limita las sesiones r
     ],
     recentSets: [],
     historySets: [],
+    latestProgressLog: null,
   });
 
   assert.deepEqual(result.sections.nextRoutine, {

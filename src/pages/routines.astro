@@ -39,13 +39,19 @@ const exercisesJson = JSON.stringify(exercises || []);
 ---
 
 <Layout title="Rutinas">
-  <div class="flex flex-col lg:flex-row gap-6 w-full">
+  <div class="flex flex-col gap-4 w-full">
+    <div class="flex md:hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/4 p-1.5" role="tablist" aria-label="Vista de rutinas">
+      <button type="button" id="routines-tab-library" data-tab-target="library" role="tab" aria-selected="true" class="min-h-11 flex-1 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-app-bg">Biblioteca</button>
+      <button type="button" id="routines-tab-builder" data-tab-target="builder" role="tab" aria-selected="false" class="min-h-11 flex-1 rounded-2xl px-4 py-3 text-sm font-semibold text-white/70">Constructor</button>
+    </div>
+
+    <div class="flex flex-col md:flex-row gap-6 w-full">
 
     <!-- Left Pane: Library -->
-    <section class="w-full lg:w-[340px] flex-shrink-0 flex flex-col gap-4">
+    <section id="routines-library-pane" data-pane="library" class="w-full md:w-[340px] flex-shrink-0 flex flex-col gap-4">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-bold tracking-tight text-white">Biblioteca</h2>
-        <button type="button" id="btn-new-routine" class="bg-primary text-app-bg font-bold text-sm px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 shadow-[0_0_15px_rgba(60,249,26,0.3)] motion-button">
+        <button type="button" id="btn-new-routine" class="min-h-11 bg-primary text-app-bg font-bold text-sm px-4 py-2 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 shadow-[0_0_15px_rgba(60,249,26,0.3)] motion-button">
           <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
           Nueva
         </button>
@@ -53,7 +59,7 @@ const exercisesJson = JSON.stringify(exercises || []);
 
       <GlassCard class="p-2 flex items-center gap-2 !rounded-lg">
         <span class="material-symbols-outlined text-white/40 ml-2" style="font-size: 20px;">search</span>
-        <input id="search-routines" class="bg-transparent border-none text-sm text-white placeholder-[var(--color-muted)] focus:ring-0 w-full p-1 font-display outline-none" placeholder="Buscar rutinas..." type="text"/>
+        <input id="search-routines" class="min-h-11 bg-transparent border-none text-sm text-white placeholder-[var(--color-muted)] focus:ring-0 w-full p-1 font-display outline-none" placeholder="Buscar rutinas..." type="text"/>
       </GlassCard>
 
       <div id="routine-list" class="flex flex-col gap-3 pb-4 min-h-[80px]"></div>
@@ -61,7 +67,8 @@ const exercisesJson = JSON.stringify(exercises || []);
     </section>
 
     <!-- Right Pane: Builder -->
-    <GlassCard class="flex-1 flex flex-col gap-5 p-6 min-h-[600px] motion-card fade-in-up content-auto">
+    <div id="routines-builder-pane" data-pane="builder" class="flex-1">
+    <GlassCard class="flex flex-col gap-5 p-4 sm:p-6 min-h-[600px] motion-card fade-in-up content-auto">
       <div id="builder-feedback" class="hidden rounded-lg border px-4 py-3 text-sm font-medium"></div>
       <div class="rounded-xl border border-white/10 bg-white/3 px-4 py-3 text-sm text-muted">
         <p class="font-semibold text-white mb-1">Cómo crear una rutina</p>
@@ -71,7 +78,7 @@ const exercisesJson = JSON.stringify(exercises || []);
         <div class="flex flex-col gap-2 flex-1">
           <h2 class="text-2xl font-bold tracking-tight text-white">Constructor de rutinas</h2>
           <input id="routine-name-input" type="text" placeholder="Nombre de la rutina..."
-            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 outline-none focus:border-primary/50 transition-colors w-full sm:max-w-[300px]"/>
+            class="min-h-11 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 outline-none focus:border-primary/50 transition-colors w-full sm:max-w-[300px]"/>
           <div class="flex gap-2 mt-1">
             {goalOptions.map(({ value, label }) => (
               <label class="flex items-center cursor-pointer">
@@ -82,8 +89,8 @@ const exercisesJson = JSON.stringify(exercises || []);
           </div>
         </div>
         <div class="flex w-full flex-wrap gap-3 sm:w-auto sm:flex-nowrap">
-          <button type="button" id="btn-cancel" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white transition-colors glass-card motion-button sm:flex-none">Limpiar</button>
-          <button type="button" id="btn-save-routine" class="flex-1 px-4 py-2 rounded-lg text-sm font-bold bg-primary text-app-bg hover:brightness-110 transition-colors motion-button sm:flex-none">Guardar rutina</button>
+          <button type="button" id="btn-cancel" class="min-h-11 flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white transition-colors glass-card motion-button sm:flex-none">Limpiar</button>
+          <button type="button" id="btn-save-routine" class="min-h-11 flex-1 px-4 py-2 rounded-lg text-sm font-bold bg-primary text-app-bg hover:brightness-110 transition-colors motion-button sm:flex-none">Guardar rutina</button>
         </div>
       </div>
 
@@ -93,9 +100,9 @@ const exercisesJson = JSON.stringify(exercises || []);
           <div>
             <p class="text-xs text-white/50 uppercase tracking-wider mb-2">Filtrar por músculo</p>
             <div class="flex flex-wrap gap-2">
-              <button type="button" data-muscle="all" class="muscle-btn text-[11px] font-bold uppercase px-3 py-1.5 rounded-full border border-primary/50 bg-primary/10 text-primary transition-all motion-button">Todos</button>
+              <button type="button" data-muscle="all" class="muscle-btn min-h-11 text-[11px] font-bold uppercase px-3 py-1.5 rounded-full border border-primary/50 bg-primary/10 text-primary transition-all motion-button">Todos</button>
               {allMuscleGroups.map((m: string) => (
-                <button type="button" data-muscle={m} class="muscle-btn text-[11px] font-bold uppercase px-3 py-1.5 rounded-full border border-white/15 text-white/50 transition-all hover:border-primary/40 hover:text-primary/80 capitalize motion-button">{m}</button>
+                <button type="button" data-muscle={m} class="muscle-btn min-h-11 text-[11px] font-bold uppercase px-3 py-1.5 rounded-full border border-white/15 text-white/50 transition-all hover:border-primary/40 hover:text-primary/80 capitalize motion-button">{m}</button>
               ))}
             </div>
           </div>
@@ -119,6 +126,13 @@ const exercisesJson = JSON.stringify(exercises || []);
         </div>
       </div>
     </GlassCard>
+    </div>
+    </div>
+
+    <button type="button" id="btn-save-routine-fab" class="fixed bottom-24 right-4 z-30 hidden min-h-12 min-w-12 items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-app-bg shadow-[0_14px_32px_rgba(60,249,26,0.28)] md:hidden">
+      <span class="material-symbols-outlined" aria-hidden="true">save</span>
+      <span>Guardar rutina</span>
+    </button>
   </div>
 </Layout>
 
@@ -131,6 +145,39 @@ const exercisesJson = JSON.stringify(exercises || []);
   let timelineExercises = [];
   let activeFilter = 'all';
   let feedbackTimeout = null;
+  let activeMobileTab = 'library';
+
+  function syncRoutineMobileLayout() {
+    const libraryPane = document.getElementById('routines-library-pane');
+    const builderPane = document.getElementById('routines-builder-pane');
+    const fab = document.getElementById('btn-save-routine-fab');
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+
+    if (!libraryPane || !builderPane || !fab) return;
+
+    if (isDesktop) {
+      libraryPane.classList.remove('hidden');
+      builderPane.classList.remove('hidden');
+      fab.classList.add('hidden');
+      return;
+    }
+
+    libraryPane.classList.toggle('hidden', activeMobileTab !== 'library');
+    builderPane.classList.toggle('hidden', activeMobileTab !== 'builder');
+    fab.classList.toggle('hidden', activeMobileTab !== 'builder');
+  }
+
+  function setRoutineMobileTab(tab) {
+    activeMobileTab = tab;
+    document.querySelectorAll('[data-tab-target]').forEach(function(button) {
+      const active = button.dataset.tabTarget === tab;
+      button.setAttribute('aria-selected', String(active));
+      button.classList.toggle('bg-primary', active);
+      button.classList.toggle('text-app-bg', active);
+      button.classList.toggle('text-white/70', !active);
+    });
+    syncRoutineMobileLayout();
+  }
 
   function getSelectedGoal() {
     const selected = document.querySelector('input[name="routine-goal"]:checked');
@@ -334,6 +381,7 @@ const exercisesJson = JSON.stringify(exercises || []);
       .map(function(re) { return { exercise_id: re.exercises.id, name: re.exercises.name, target_sets: re.target_sets, target_reps: re.target_reps }; });
     renderTimeline();
     renderLibrary(document.getElementById('search-routines').value);
+    setRoutineMobileTab('builder');
   }
 
   function clearBuilder() {
@@ -344,6 +392,7 @@ const exercisesJson = JSON.stringify(exercises || []);
     renderTimeline();
     renderLibrary();
     clearRoutineDraft();
+    setRoutineMobileTab('builder');
   }
 
   async function saveRoutine() {
@@ -358,7 +407,9 @@ const exercisesJson = JSON.stringify(exercises || []);
       exercises: timelineExercises.map(function(ex, i) { return { exercise_id: ex.exercise_id, order_index: i, target_sets: ex.target_sets, target_reps: ex.target_reps }; })
     };
     const btn = document.getElementById('btn-save-routine');
+    const fabBtn = document.getElementById('btn-save-routine-fab');
     btn.textContent = 'Guardando...'; btn.disabled = true;
+    if (fabBtn) { fabBtn.disabled = true; }
     try {
       const url = editingRoutineId ? '/api/routines/' + editingRoutineId : '/api/routines';
       const method = editingRoutineId ? 'PUT' : 'POST';
@@ -392,13 +443,15 @@ const exercisesJson = JSON.stringify(exercises || []);
        renderTimeline();
        renderLibrary(document.getElementById('search-routines').value);
        showBuilderMessage(wasEditing ? 'Rutina actualizada correctamente.' : 'Rutina creada correctamente.', 'success');
-       btn.textContent = 'Guardar rutina';
-       btn.disabled = false;
-      } catch(err) {
-        showBuilderMessage(err.message || 'Error guardando la rutina. Intenta de nuevo.', 'error');
-        btn.textContent = 'Guardar rutina'; btn.disabled = false;
-     }
-   }
+        btn.textContent = 'Guardar rutina';
+        btn.disabled = false;
+        if (fabBtn) { fabBtn.disabled = false; }
+       } catch(err) {
+         showBuilderMessage(err.message || 'Error guardando la rutina. Intenta de nuevo.', 'error');
+         btn.textContent = 'Guardar rutina'; btn.disabled = false;
+         if (fabBtn) { fabBtn.disabled = false; }
+      }
+    }
 
   async function deleteRoutine(id) {
     const routine = routines.find(function(r) { return r.id === id; });
@@ -419,8 +472,17 @@ const exercisesJson = JSON.stringify(exercises || []);
   document.getElementById('btn-new-routine').addEventListener('click', clearBuilder);
   document.getElementById('btn-cancel').addEventListener('click', clearBuilder);
   document.getElementById('btn-save-routine').addEventListener('click', saveRoutine);
+  document.getElementById('btn-save-routine-fab').addEventListener('click', saveRoutine);
   document.getElementById('search-routines').addEventListener('input', function(e) { renderLibrary(e.target.value); });
   document.getElementById('routine-name-input').addEventListener('input', persistRoutineDraft);
+
+  document.querySelectorAll('[data-tab-target]').forEach(function(button) {
+    button.addEventListener('click', function() {
+      setRoutineMobileTab(button.dataset.tabTarget);
+    });
+  });
+
+  window.addEventListener('resize', syncRoutineMobileLayout);
 
   document.querySelectorAll('input[name="routine-goal"]').forEach(function(radio) {
     radio.addEventListener('change', persistRoutineDraft);
@@ -443,4 +505,5 @@ const exercisesJson = JSON.stringify(exercises || []);
   renderExercisePool();
   renderTimeline();
   restoreRoutineDraft();
+  syncRoutineMobileLayout();
 </script>

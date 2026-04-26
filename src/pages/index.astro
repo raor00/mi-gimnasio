@@ -17,7 +17,7 @@ const userId = auth.userId;
 const since30 = new Date();
 since30.setDate(since30.getDate() - 30);
 
-const [profileResult, activeSessionResult, routinesResult, sessionsResult, recentSetsResult, historySetsResult] = await Promise.all([
+const [profileResult, activeSessionResult, routinesResult, sessionsResult, recentSetsResult, historySetsResult, latestProgressLogResult] = await Promise.all([
   supabase.from('profiles').select('name').eq('id', userId).maybeSingle(),
   supabase
     .from('workout_sessions')
@@ -77,6 +77,12 @@ const [profileResult, activeSessionResult, routinesResult, sessionsResult, recen
     .eq('workout_sessions.user_id', userId)
     .not('workout_sessions.completed_at', 'is', null)
     .eq('completed', true),
+  supabase
+    .from('user_progress_logs')
+    .select('log_date, body_weight_kg, fatigue_level, energy_level, sleep_quality, symptoms')
+    .eq('user_id', userId)
+    .order('log_date', { ascending: false })
+    .limit(1),
 ]);
 
 const userName = profileResult.data?.name?.trim() || auth.displayName;
@@ -137,6 +143,8 @@ const sessions = (sessionsResult.data ?? []).map((session) => ({
   muscle_groups: Array.from(muscleGroupsBySession.get(session.id) ?? []),
 }));
 
+const latestProgressLog = latestProgressLogResult.data?.[0] ?? null;
+
 const dashboard = buildDashboardViewModel({
   userName,
   activeSession,
@@ -144,6 +152,7 @@ const dashboard = buildDashboardViewModel({
   sessions,
   recentSets,
   historySets,
+  latestProgressLog,
 });
 
 const startHref = activeSession?.id

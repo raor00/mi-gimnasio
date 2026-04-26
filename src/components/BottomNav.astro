@@ -10,6 +10,8 @@ const navItems = [
   { href: '/routines', label: 'Rutinas', icon: 'fitness_center', active: currentPath === '/routines' },
   { href: '/calendar', label: 'Calendario', icon: 'calendar_month', active: currentPath === '/calendar' },
   { href: '/statistics', label: 'Stats', icon: 'bar_chart', active: currentPath === '/statistics' },
+  { href: '/progress', label: 'Progreso', icon: 'trending_up', active: currentPath === '/progress' },
+  { href: '/profile', label: 'Perfil', icon: 'account_circle', active: currentPath === '/profile' },
 ];
 ---
 
@@ -21,7 +23,7 @@ const navItems = [
       class="fixed bottom-0 left-0 right-0 z-50 sm:hidden"
     >
       <div class="flex justify-center px-4 pb-4 pt-2">
-        <div class="flex items-center gap-1 rounded-full border border-white/10 bg-surface/95 px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        <div class="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-surface/95 px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl">
           {navItems.map((item) => (
             <a
               href={item.href}

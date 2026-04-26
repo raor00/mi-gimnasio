@@ -13,6 +13,13 @@ import {
   predictNextPR,
 } from '../src/lib/predictions.ts';
 
+const progressAlertLog = {
+  log_date: new Date().toISOString().split('T')[0],
+  fatigue_level: 8,
+  energy_level: 2,
+  symptoms: ['Dolor de espalda'],
+};
+
 function isoDaysAgo(daysAgo: number, hour = 12) {
   const date = new Date();
   date.setHours(hour, 0, 0, 0);
@@ -116,6 +123,21 @@ test('getSmartBannerState devuelve fallback amigable cuando no hay datos relevan
 
   assert.equal(result.kind, 'default');
   assert.match(result.title, /Ana/);
+});
+
+test('getSmartBannerState prioriza recuperación cuando el último log reporta alta fatiga o energía baja', () => {
+  const result = getSmartBannerState(
+    null,
+    [{ completed_at: isoDaysAgo(1), routine_name: 'Pull Day' }],
+    [],
+    [{ id: 'pull', name: 'Pull Day', muscle_groups: ['back'] }],
+    'Ana',
+    progressAlertLog,
+  );
+
+  assert.equal(result.kind, 'recovery-needed');
+  assert.equal(result.cta.href, '/progress');
+  assert.match(result.description, /descanso|recuperación/i);
 });
 
 test('getWeeklyVolume devuelve siete días con volumen agrupado y relleno en cero', () => {
@@ -229,6 +251,17 @@ test('detectOvertraining detecta sobrecarga por volumen superior al 30% y respet
   assert.equal(detectOvertraining([]).isOvertraining, false);
 });
 
+test('detectOvertraining detecta tendencia de fatiga alta o energía baja durante tres días', () => {
+  const result = detectOvertraining([], [
+    { log_date: '2026-04-24', fatigue_level: 8, energy_level: 3 },
+    { log_date: '2026-04-23', fatigue_level: 7, energy_level: 2 },
+    { log_date: '2026-04-22', fatigue_level: 7, energy_level: 3 },
+  ]);
+
+  assert.equal(result.isOvertraining, true);
+  assert.match(result.message, /fatiga|energía/i);
+});
+
 test('getRecommendedRoutine devuelve la rutina con más descanso, desempata por orden alfabético y maneja vacío', () => {
   const routines = [
     { id: 'push', name: 'Push Day', muscle_groups: ['chest', 'triceps'] },
@@ -253,4 +286,16 @@ test('getRecommendedRoutine devuelve la rutina con más descanso, desempata por 
   assert.equal(withHistory?.id, 'pull');
   assert.equal(tie?.id, 'a');
   assert.equal(getRecommendedRoutine([], []).id, null);
+});
+
+test('getRecommendedRoutine evita rutinas de espalda si hay dolor lumbar reciente', () => {
+  const routines = [
+    { id: 'pull', name: 'Pull Day', muscle_groups: ['back', 'biceps'] },
+    { id: 'legs', name: 'Leg Day', muscle_groups: ['legs'] },
+  ];
+
+  const result = getRecommendedRoutine(routines, [], progressAlertLog);
+
+  assert.equal(result.id, 'legs');
+  assert.doesNotMatch(result.reason, /espalda/i);
 });

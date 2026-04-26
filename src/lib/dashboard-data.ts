@@ -11,6 +11,7 @@ import {
   type DashboardRoutine,
   type DashboardSession,
   type DashboardSet,
+  type DashboardProgressLog,
 } from './predictions.ts';
 
 export type DashboardViewModelInput = {
@@ -20,6 +21,7 @@ export type DashboardViewModelInput = {
   sessions: DashboardSession[];
   recentSets: DashboardSet[];
   historySets: DashboardSet[];
+  latestProgressLog: DashboardProgressLog | null;
 };
 
 const GOAL_LABELS: Record<string, string> = {
@@ -78,12 +80,13 @@ export function buildDashboardViewModel(input: DashboardViewModelInput) {
   const weeklyFrequency = getWeeklyFrequency(input.sessions);
   const streak = getStreak(input.sessions);
   const recentPrs = getRecentPRs(input.historySets);
-  const recommendedRoutine = getRecommendedRoutine(input.routines, input.sessions);
+  const recommendedRoutine = getRecommendedRoutine(input.routines, input.sessions, input.latestProgressLog);
   const recovery = getMuscleRecoveryStatus(input.sessions, input.recentSets);
   const overtraining = detectOvertraining(
     input.sessions
       .filter((session) => session.completed_at)
       .map((session) => ({ completed_at: session.completed_at, totalVolume: session.totalVolume ?? 0 })),
+    input.latestProgressLog ? [input.latestProgressLog] : [],
   );
   const primaryExercise = recentPrs[0]?.exerciseName ?? input.historySets.find((set) => set.exercise_name)?.exercise_name ?? null;
   const nextPr = primaryExercise
@@ -101,7 +104,7 @@ export function buildDashboardViewModel(input: DashboardViewModelInput) {
       title: `Dashboard de ${input.userName}`,
       subtitle: 'Tu rendimiento semanal, en un solo vistazo.',
     },
-    banner: getSmartBannerState(input.activeSession, input.sessions, input.historySets, input.routines, input.userName),
+    banner: getSmartBannerState(input.activeSession, input.sessions, input.historySets, input.routines, input.userName, input.latestProgressLog),
     kpis: {
       weeklyVolume: {
         total: totalWeeklyVolume,
@@ -128,6 +131,13 @@ export function buildDashboardViewModel(input: DashboardViewModelInput) {
       overtraining,
       recommendedRoutine,
     },
+    progressSnapshot: input.latestProgressLog ? {
+      bodyWeightKg: input.latestProgressLog.body_weight_kg ?? null,
+      fatigueLevel: input.latestProgressLog.fatigue_level ?? null,
+      energyLevel: input.latestProgressLog.energy_level ?? null,
+      symptoms: input.latestProgressLog.symptoms ?? [],
+      logDate: input.latestProgressLog.log_date ?? null,
+    } : null,
     sections: {
       nextRoutine: nextRoutineSection,
       recentSessions: recentSessionsSection,

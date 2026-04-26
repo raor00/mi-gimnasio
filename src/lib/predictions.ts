@@ -31,7 +31,7 @@ export type WeeklyVolumePoint = {
 };
 
 export type BannerState = {
-  kind: 'active-session' | 'streak-risk' | 'suggested-routine' | 'recovery' | 'recent-pr' | 'default';
+  kind: 'active-session' | 'streak-risk' | 'suggested-routine' | 'recovery' | 'recovery-needed' | 'recent-pr' | 'default';
   icon: string;
   tone: 'primary' | 'accent' | 'warning';
   title: string;
@@ -65,6 +65,15 @@ export type RecommendedRoutine = {
   reason: string;
   muscleGroup: string | null;
   daysSince: number;
+};
+
+export type DashboardProgressLog = {
+  log_date?: string | null;
+  body_weight_kg?: number | null;
+  fatigue_level?: number | null;
+  energy_level?: number | null;
+  sleep_quality?: number | null;
+  symptoms?: string[] | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -270,7 +279,24 @@ export function predictNextPR(exerciseHistory: Array<{ logged_at?: string | null
   };
 }
 
-export function detectOvertraining(recentSessions: Array<{ completed_at?: string | null; totalVolume?: number | null }>) {
+export function detectOvertraining(
+  recentSessions: Array<{ completed_at?: string | null; totalVolume?: number | null }>,
+  progressLogs: DashboardProgressLog[] = [],
+) {
+  const orderedLogs = [...progressLogs]
+    .filter((log) => log.log_date)
+    .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)));
+  const recoveryTrend = orderedLogs.slice(0, 3);
+  const sustainedRecoveryStress = recoveryTrend.length >= 3
+    && recoveryTrend.every((log) => Number(log.fatigue_level) >= 7 || Number(log.energy_level) <= 3);
+
+  if (sustainedRecoveryStress) {
+    return {
+      isOvertraining: true,
+      message: 'Tus últimos registros muestran fatiga alta o energía baja durante varios días. Prioriza recuperación activa y descanso.',
+    };
+  }
+
   if (recentSessions.length < 2) {
     return { isOvertraining: false, message: 'Todavía no hay suficientes datos para detectar fatiga.' };
   }
@@ -293,7 +319,11 @@ export function detectOvertraining(recentSessions: Array<{ completed_at?: string
   };
 }
 
-export function getRecommendedRoutine(routines: DashboardRoutine[], sessions: DashboardSession[]): RecommendedRoutine {
+export function getRecommendedRoutine(
+  routines: DashboardRoutine[],
+  sessions: DashboardSession[],
+  latestProgressLog: DashboardProgressLog | null = null,
+): RecommendedRoutine {
   if (routines.length === 0) {
     return {
       id: null,
@@ -303,6 +333,19 @@ export function getRecommendedRoutine(routines: DashboardRoutine[], sessions: Da
       daysSince: 0,
     };
   }
+
+  const blockedMuscles = new Set<string>();
+  for (const symptom of latestProgressLog?.symptoms ?? []) {
+    if (/espalda/i.test(symptom)) blockedMuscles.add('back');
+    if (/hombro/i.test(symptom)) blockedMuscles.add('shoulders');
+    if (/rodilla|cadera/i.test(symptom)) blockedMuscles.add('legs');
+    if (/muñeca/i.test(symptom)) blockedMuscles.add('forearms');
+  }
+
+  const candidateRoutines = blockedMuscles.size === 0
+    ? routines
+    : routines.filter((routine) => !getRoutineMuscleGroups(routine).some((muscle) => blockedMuscles.has(muscle)));
+  const availableRoutines = candidateRoutines.length > 0 ? candidateRoutines : routines;
 
   const lastByMuscle = new Map<string, Date>();
   for (const session of sessions) {
@@ -316,7 +359,7 @@ export function getRecommendedRoutine(routines: DashboardRoutine[], sessions: Da
     }
   }
 
-  const ranked = routines.map((routine) => {
+  const ranked = availableRoutines.map((routine) => {
     const muscles = getRoutineMuscleGroups(routine);
     if (muscles.length === 0) {
       return { routine, muscleGroup: null, daysSince: Number.POSITIVE_INFINITY };
@@ -337,12 +380,16 @@ export function getRecommendedRoutine(routines: DashboardRoutine[], sessions: Da
   ranked.sort((a, b) => b.daysSince - a.daysSince || String(a.routine.name).localeCompare(String(b.routine.name)));
   const winner = ranked[0]!;
 
+  const blockedReason = blockedMuscles.has(String(winner.muscleGroup))
+    ? 'Se evitó ese grupo por síntomas recientes.'
+    : null;
+
   return {
     id: winner.routine.id ?? null,
     name: String(winner.routine.name ?? 'Rutina recomendada'),
-    reason: winner.daysSince === Number.POSITIVE_INFINITY
+    reason: blockedReason ?? (winner.daysSince === Number.POSITIVE_INFINITY
       ? 'Aún no has trabajado este grupo muscular. Buen momento para activarlo.'
-      : `Han pasado ${winner.daysSince} día${winner.daysSince === 1 ? '' : 's'} desde tu último trabajo principal.`,
+      : `Han pasado ${winner.daysSince} día${winner.daysSince === 1 ? '' : 's'} desde tu último trabajo principal.`),
     muscleGroup: winner.muscleGroup,
     daysSince: Number.isFinite(winner.daysSince) ? winner.daysSince : 999,
   };
@@ -354,6 +401,7 @@ export function getSmartBannerState(
   sets: DashboardSet[],
   routines: DashboardRoutine[],
   userName: string,
+  latestProgressLog: DashboardProgressLog | null = null,
 ): BannerState {
   if (activeSession?.id) {
     return {
@@ -363,6 +411,17 @@ export function getSmartBannerState(
       title: `Continua tu entrenamiento${activeSession.routine_name ? ` de ${activeSession.routine_name}` : ''}`,
       description: 'Tienes una sesión en progreso lista para retomarse.',
       cta: { href: `/session?session_id=${activeSession.id}`, label: 'Continuar ahora' },
+    };
+  }
+
+  if (Number(latestProgressLog?.fatigue_level) >= 7 || Number(latestProgressLog?.energy_level) <= 3) {
+    return {
+      kind: 'recovery-needed',
+      icon: 'bedtime',
+      tone: 'warning',
+      title: 'Hoy tu cuerpo pide recuperación',
+      description: 'Tu último registro muestra fatiga alta o energía baja. Conviene priorizar descanso y recuperación antes de entrenar fuerte.',
+      cta: { href: '/progress', label: 'Revisar progreso' },
     };
   }
 
@@ -379,7 +438,7 @@ export function getSmartBannerState(
     };
   }
 
-  const recommendedRoutine = getRecommendedRoutine(routines, sessions);
+  const recommendedRoutine = getRecommendedRoutine(routines, sessions, latestProgressLog);
   if (recommendedRoutine.id) {
     return {
       kind: 'suggested-routine',
@@ -391,7 +450,7 @@ export function getSmartBannerState(
     };
   }
 
-  const fatigue = detectOvertraining(buildSessionVolumes(sessions, sets));
+  const fatigue = detectOvertraining(buildSessionVolumes(sessions, sets), latestProgressLog ? [latestProgressLog] : []);
   if (fatigue.isOvertraining) {
     return {
       kind: 'recovery',

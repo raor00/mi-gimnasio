@@ -1,0 +1,162 @@
+---
+import GlassCard from '../components/GlassCard.astro';
+import Layout from '../layouts/Layout.astro';
+import {
+  PROFILE_EXPERIENCE_OPTIONS,
+  PROFILE_GENDER_OPTIONS,
+  PROFILE_UNITS_OPTIONS,
+} from '../lib/profile-api.ts';
+import { supabaseServerClient } from '../lib/supabase-server';
+
+const auth = Astro.locals.auth!;
+const supabase = supabaseServerClient(Astro.cookies);
+const userId = auth.userId;
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('name, age, height_cm, weight_kg, gender, experience_level, weekly_goal_sessions, preferred_units')
+  .eq('id', userId)
+  .maybeSingle();
+
+const initialProfile = {
+  name: profile?.name ?? auth.displayName ?? '',
+  age: profile?.age ?? null,
+  height_cm: profile?.height_cm ?? null,
+  weight_kg: profile?.weight_kg ?? null,
+  gender: profile?.gender ?? '',
+  experience_level: profile?.experience_level ?? '',
+  weekly_goal_sessions: profile?.weekly_goal_sessions ?? 4,
+  preferred_units: profile?.preferred_units ?? 'kg',
+};
+---
+
+<Layout title="Perfil">
+  <div class="flex flex-col gap-5">
+    <section class="space-y-2">
+      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-primary">TU PERFIL</p>
+      <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl">Perfil</h1>
+      <p class="max-w-2xl text-sm leading-6 text-muted sm:text-base">Mantén tus datos básicos, tu experiencia y tu meta semanal sincronizados para personalizar mejor tus recomendaciones.</p>
+    </section>
+
+    <GlassCard class="p-5 sm:p-6">
+      <section aria-labelledby="profile-summary-title" class="space-y-2">
+        <h2 id="profile-summary-title" class="text-lg font-bold text-white">Cuenta</h2>
+        <p class="text-sm text-white/75">Sesión activa como <span class="font-semibold text-white">{auth.session.user.email}</span></p>
+      </section>
+    </GlassCard>
+
+    <GlassCard class="p-5 sm:p-6">
+      <form id="profile-form" class="space-y-5" novalidate>
+        <div class="space-y-2">
+          <h2 class="text-xl font-bold text-white">Datos personales</h2>
+          <p class="text-sm text-muted">Todos los campos son editables. Puedes dejar vacíos los opcionales.</p>
+        </div>
+
+        <div id="profile-feedback" class="hidden rounded-2xl border px-4 py-3 text-sm font-medium" aria-live="polite"></div>
+
+        <div class="grid gap-4">
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Nombre</span>
+            <input name="name" type="text" value={initialProfile.name} class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" autocomplete="name" />
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Edad</span>
+            <input name="age" type="number" min="10" max="120" value={initialProfile.age ?? ''} class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="numeric" />
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Altura (cm)</span>
+            <input name="height_cm" type="number" min="80" max="260" value={initialProfile.height_cm ?? ''} class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="numeric" />
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Peso corporal (kg)</span>
+            <input name="weight_kg" type="number" min="20" max="500" step="0.1" value={initialProfile.weight_kg ?? ''} class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="decimal" />
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Género</span>
+            <select name="gender" class="min-h-11 rounded-2xl border border-white/10 bg-[#111] px-4 py-3 text-white outline-none transition-colors focus:border-primary/50">
+              <option value="">Selecciona una opción</option>
+              {PROFILE_GENDER_OPTIONS.map((option) => <option value={option} selected={initialProfile.gender === option}>{option}</option>)}
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Nivel de experiencia</span>
+            <select name="experience_level" class="min-h-11 rounded-2xl border border-white/10 bg-[#111] px-4 py-3 text-white outline-none transition-colors focus:border-primary/50">
+              <option value="">Selecciona una opción</option>
+              {PROFILE_EXPERIENCE_OPTIONS.map((option) => <option value={option} selected={initialProfile.experience_level === option}>{option}</option>)}
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Meta semanal de sesiones</span>
+            <input name="weekly_goal_sessions" type="number" min="1" max="7" value={initialProfile.weekly_goal_sessions} class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="numeric" />
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Unidades preferidas</span>
+            <select name="preferred_units" class="min-h-11 rounded-2xl border border-white/10 bg-[#111] px-4 py-3 text-white outline-none transition-colors focus:border-primary/50">
+              {PROFILE_UNITS_OPTIONS.map((option) => <option value={option} selected={initialProfile.preferred_units === option}>{option}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <button id="profile-submit" type="submit" class="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-app-bg shadow-[0_10px_24px_rgba(60,249,26,0.22)] transition-transform hover:scale-[1.01] sm:w-auto">
+          Guardar cambios
+        </button>
+      </form>
+    </GlassCard>
+  </div>
+
+  <script is:inline>
+    const profileForm = document.getElementById('profile-form');
+    const profileFeedback = document.getElementById('profile-feedback');
+    const profileSubmit = document.getElementById('profile-submit');
+
+    function showProfileFeedback(message, type) {
+      if (!profileFeedback) return;
+      profileFeedback.className = 'rounded-2xl border px-4 py-3 text-sm font-medium';
+      if (type === 'error') {
+        profileFeedback.classList.add('border-red-500/30', 'bg-red-500/10', 'text-red-200');
+      } else {
+        profileFeedback.classList.add('border-primary/30', 'bg-primary/10', 'text-primary');
+      }
+      profileFeedback.textContent = message;
+      profileFeedback.classList.remove('hidden');
+    }
+
+    profileForm?.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      if (!(profileForm instanceof HTMLFormElement) || !(profileSubmit instanceof HTMLButtonElement)) return;
+
+      profileSubmit.disabled = true;
+      profileSubmit.textContent = 'Guardando...';
+
+      const formData = new FormData(profileForm);
+      const payload = Object.fromEntries(formData.entries());
+
+      try {
+        const response = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'No se pudo guardar el perfil.');
+        }
+
+        showProfileFeedback('Perfil actualizado correctamente.', 'success');
+      } catch (error) {
+        showProfileFeedback(error instanceof Error ? error.message : 'No se pudo guardar el perfil.', 'error');
+      } finally {
+        profileSubmit.disabled = false;
+        profileSubmit.textContent = 'Guardar cambios';
+      }
+    });
+  </script>
+</Layout>

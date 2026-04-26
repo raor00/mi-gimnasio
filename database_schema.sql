@@ -14,6 +14,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.profiles 
+  ADD COLUMN IF NOT EXISTS age INT,
+  ADD COLUMN IF NOT EXISTS height_cm INT,
+  ADD COLUMN IF NOT EXISTS weight_kg FLOAT,
+  ADD COLUMN IF NOT EXISTS gender TEXT,
+  ADD COLUMN IF NOT EXISTS experience_level TEXT,
+  ADD COLUMN IF NOT EXISTS weekly_goal_sessions INT DEFAULT 4,
+  ADD COLUMN IF NOT EXISTS preferred_units TEXT DEFAULT 'kg';
+
 -- Biblioteca global de ejercicios (solo lectura para usuarios)
 CREATE TABLE IF NOT EXISTS public.exercises (
   id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -74,6 +83,24 @@ CREATE TABLE IF NOT EXISTS public.session_sets (
   logged_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.user_progress_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  log_date DATE NOT NULL,
+  body_weight_kg FLOAT,
+  body_fat_pct FLOAT,
+  arm_cm FLOAT,
+  chest_cm FLOAT,
+  waist_cm FLOAT,
+  thigh_cm FLOAT,
+  fatigue_level INT CHECK (fatigue_level BETWEEN 1 AND 10),
+  energy_level INT CHECK (energy_level BETWEEN 1 AND 10),
+  sleep_quality INT CHECK (sleep_quality BETWEEN 1 AND 10),
+  symptoms TEXT[],
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.workout_sessions
   ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
 
@@ -93,6 +120,7 @@ ALTER TABLE public.routines          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.routine_exercises ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workout_sessions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.session_sets      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_progress_logs ENABLE ROW LEVEL SECURITY;
 
 -- Perfiles: solo el propio usuario
 CREATE POLICY "profiles_own" ON public.profiles
@@ -127,6 +155,9 @@ CREATE POLICY "sets_own" ON public.session_sets
       WHERE s.id = session_id AND s.user_id = auth.uid()
     )
   );
+
+CREATE POLICY "progress_logs_own" ON public.user_progress_logs
+  FOR ALL USING (auth.uid() = user_id);
 
 ------------------------------------------------------------
 -- 3. TRIGGER — Auto-crear perfil al registrarse

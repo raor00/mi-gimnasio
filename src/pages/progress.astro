@@ -1,0 +1,371 @@
+---
+import GlassCard from '../components/GlassCard.astro';
+import Layout from '../layouts/Layout.astro';
+import { PROGRESS_SYMPTOM_OPTIONS } from '../lib/progress-api.ts';
+import { supabaseServerClient } from '../lib/supabase-server';
+
+const auth = Astro.locals.auth!;
+const supabase = supabaseServerClient(Astro.cookies);
+const userId = auth.userId;
+
+const { data: progressLogs } = await supabase
+  .from('user_progress_logs')
+  .select('id, log_date, body_weight_kg, body_fat_pct, arm_cm, chest_cm, waist_cm, thigh_cm, fatigue_level, energy_level, sleep_quality, symptoms, notes, created_at')
+  .eq('user_id', userId)
+  .order('log_date', { ascending: false })
+  .limit(30);
+
+const logs = progressLogs ?? [];
+const recentLogs = logs.slice(0, 7);
+const logsJson = JSON.stringify(logs);
+const today = new Date().toISOString().split('T')[0];
+---
+
+<Layout title="Mi progreso">
+  <div class="flex flex-col gap-5">
+    <section class="space-y-2">
+      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-primary">MI PROGRESO</p>
+      <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl">Mi Progreso</h1>
+      <p class="max-w-2xl text-sm leading-6 text-muted sm:text-base">Registra tu estado físico, medidas y percepción de recuperación para tomar mejores decisiones entre sesiones.</p>
+    </section>
+
+    <GlassCard class="p-5 sm:p-6">
+      <form id="progress-form" class="space-y-5" novalidate>
+        <div class="space-y-2">
+          <h2 class="text-xl font-bold text-white">Registro diario</h2>
+          <p class="text-sm text-muted">Completa lo que tengas a mano. Los campos de medidas son opcionales.</p>
+        </div>
+
+        <div id="progress-feedback" class="hidden rounded-2xl border px-4 py-3 text-sm font-medium" aria-live="polite"></div>
+
+        <div class="grid gap-4">
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Fecha</span>
+            <input name="log_date" type="date" value={today} class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" />
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Peso corporal (kg)</span>
+            <input name="body_weight_kg" type="number" step="0.1" min="20" max="500" class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="decimal" />
+          </label>
+
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">% Grasa corporal</span>
+            <input name="body_fat_pct" type="number" step="0.1" min="0" max="100" class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="decimal" />
+          </label>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Brazo (cm)</span>
+            <input name="arm_cm" type="number" step="0.1" class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="decimal" />
+          </label>
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Pecho (cm)</span>
+            <input name="chest_cm" type="number" step="0.1" class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="decimal" />
+          </label>
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Cintura (cm)</span>
+            <input name="waist_cm" type="number" step="0.1" class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="decimal" />
+          </label>
+          <label class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-white">Muslo (cm)</span>
+            <input name="thigh_cm" type="number" step="0.1" class="min-h-11 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50" inputmode="decimal" />
+          </label>
+        </div>
+
+        <div class="grid gap-4">
+          {[
+            ['fatigue_level', 'Nivel de fatiga', '5'],
+            ['energy_level', 'Nivel de energía', '5'],
+            ['sleep_quality', 'Calidad de sueño', '6'],
+          ].map(([name, label, initialValue]) => (
+            <label class="flex flex-col gap-2">
+              <span class="flex items-center justify-between gap-3 text-sm font-medium text-white">
+                <span>{label}</span>
+                <output for={name} data-range-output={name} class="text-primary">{initialValue}</output>
+              </span>
+              <input name={name} id={name} type="range" min="1" max="10" step="1" value={initialValue} class="min-h-11 accent-primary" />
+            </label>
+          ))}
+        </div>
+
+        <fieldset class="space-y-3">
+          <legend class="text-sm font-medium text-white">Síntomas</legend>
+          <div class="grid gap-3 sm:grid-cols-2">
+            {PROGRESS_SYMPTOM_OPTIONS.map((symptom) => (
+              <label class="flex min-h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-sm text-white">
+                <input type="checkbox" name="symptoms" value={symptom} class="size-4 accent-primary" />
+                <span>{symptom}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <label class="flex flex-col gap-2">
+          <span class="text-sm font-medium text-white">Notas</span>
+          <textarea name="notes" rows="4" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition-colors focus:border-primary/50"></textarea>
+        </label>
+
+        <button id="progress-submit" type="submit" class="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-app-bg shadow-[0_10px_24px_rgba(60,249,26,0.22)] transition-transform hover:scale-[1.01] sm:w-auto">
+          Registrar
+        </button>
+      </form>
+    </GlassCard>
+
+    <GlassCard class="p-5 sm:p-6">
+      <section aria-labelledby="recent-logs-title" class="space-y-4">
+        <div>
+          <h2 id="recent-logs-title" class="text-xl font-bold text-white">Entradas recientes</h2>
+          <p class="text-sm text-muted">Tus últimos 7 registros para detectar tendencias rápidas.</p>
+        </div>
+
+        <div id="progress-log-list" class="space-y-3">
+          {recentLogs.length > 0 ? recentLogs.map((log) => (
+            <article class="rounded-2xl border border-white/8 bg-white/4 px-4 py-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="font-semibold text-white">{new Date(`${log.log_date}T12:00:00`).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                <span class="text-xs font-medium text-primary">Fatiga {log.fatigue_level ?? '—'} · Energía {log.energy_level ?? '—'}</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-3 text-sm text-white/75">
+                <span>Peso: {log.body_weight_kg ?? '—'} kg</span>
+                <span>Sueño: {log.sleep_quality ?? '—'}/10</span>
+                <span>Síntomas: {(log.symptoms ?? []).join(', ') || 'Sin registrar'}</span>
+              </div>
+              {log.notes && <p class="mt-2 text-sm text-muted">{log.notes}</p>}
+            </article>
+          )) : <p class="text-sm text-white/75">Todavía no hay registros. Crea el primero para empezar a medir tu progreso.</p>}
+        </div>
+      </section>
+    </GlassCard>
+
+    <div class="grid gap-5 xl:grid-cols-2">
+      <GlassCard class="p-5 sm:p-6">
+        <section aria-labelledby="weight-chart-title" class="space-y-4">
+          <div>
+            <h2 id="weight-chart-title" class="text-xl font-bold text-white">Peso corporal</h2>
+            <p class="text-sm text-muted">Tendencia de peso a lo largo del tiempo.</p>
+          </div>
+          <div class="h-72">
+            <canvas id="weight-progress-chart"></canvas>
+          </div>
+        </section>
+      </GlassCard>
+
+      <GlassCard class="p-5 sm:p-6">
+        <section aria-labelledby="recovery-chart-title" class="space-y-4">
+          <div>
+            <h2 id="recovery-chart-title" class="text-xl font-bold text-white">Fatiga y energía</h2>
+            <p class="text-sm text-muted">Comparación diaria de cómo llegas a tus entrenamientos.</p>
+          </div>
+          <div class="h-72">
+            <canvas id="recovery-progress-chart"></canvas>
+          </div>
+        </section>
+      </GlassCard>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ logsJson }}>
+    const progressForm = document.getElementById('progress-form');
+    const progressFeedback = document.getElementById('progress-feedback');
+    const progressSubmit = document.getElementById('progress-submit');
+    const progressLogList = document.getElementById('progress-log-list');
+    const progressLogs = JSON.parse(logsJson);
+
+    let chartJsPromise = null;
+    let weightChart = null;
+    let recoveryChart = null;
+
+    function showProgressFeedback(message, type) {
+      if (!progressFeedback) return;
+      progressFeedback.className = 'rounded-2xl border px-4 py-3 text-sm font-medium';
+      if (type === 'error') {
+        progressFeedback.classList.add('border-red-500/30', 'bg-red-500/10', 'text-red-200');
+      } else {
+        progressFeedback.classList.add('border-primary/30', 'bg-primary/10', 'text-primary');
+      }
+      progressFeedback.textContent = message;
+      progressFeedback.classList.remove('hidden');
+    }
+
+    function loadChartJs() {
+      if (window.Chart) return Promise.resolve(window.Chart);
+      if (chartJsPromise) return chartJsPromise;
+
+      chartJsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        script.async = true;
+        script.onload = () => resolve(window.Chart);
+        script.onerror = () => reject(new Error('No se pudo cargar Chart.js'));
+        document.head.appendChild(script);
+      });
+
+      return chartJsPromise;
+    }
+
+    function getChartData() {
+      return [...progressLogs]
+        .filter((log) => log.log_date)
+        .sort((a, b) => String(a.log_date).localeCompare(String(b.log_date)));
+    }
+
+    function renderRecentLogs() {
+      if (!progressLogList) return;
+      const recent = [...progressLogs]
+        .sort((a, b) => String(b.log_date).localeCompare(String(a.log_date)))
+        .slice(0, 7);
+
+      if (recent.length === 0) {
+        progressLogList.innerHTML = '<p class="text-sm text-white/75">Todavía no hay registros. Crea el primero para empezar a medir tu progreso.</p>';
+        return;
+      }
+
+      progressLogList.innerHTML = recent.map((log) => {
+        const symptoms = Array.isArray(log.symptoms) && log.symptoms.length > 0 ? log.symptoms.join(', ') : 'Sin registrar';
+        const notes = log.notes ? '<p class="mt-2 text-sm text-muted">' + log.notes + '</p>' : '';
+        return '<article class="rounded-2xl border border-white/8 bg-white/4 px-4 py-4">'
+          + '<div class="flex flex-wrap items-center justify-between gap-2">'
+          + '<p class="font-semibold text-white">' + new Date(log.log_date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) + '</p>'
+          + '<span class="text-xs font-medium text-primary">Fatiga ' + (log.fatigue_level ?? '—') + ' · Energía ' + (log.energy_level ?? '—') + '</span>'
+          + '</div>'
+          + '<div class="mt-2 flex flex-wrap gap-3 text-sm text-white/75">'
+          + '<span>Peso: ' + (log.body_weight_kg ?? '—') + ' kg</span>'
+          + '<span>Sueño: ' + (log.sleep_quality ?? '—') + '/10</span>'
+          + '<span>Síntomas: ' + symptoms + '</span>'
+          + '</div>'
+          + notes
+          + '</article>';
+      }).join('');
+    }
+
+    async function renderCharts() {
+      await loadChartJs();
+      const weightCanvas = document.getElementById('weight-progress-chart');
+      const recoveryCanvas = document.getElementById('recovery-progress-chart');
+      if (!weightCanvas || !recoveryCanvas || !window.Chart) return;
+
+      const chartData = getChartData();
+      const labels = chartData.map((log) => new Date(log.log_date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
+
+      if (weightChart) weightChart.destroy();
+      if (recoveryChart) recoveryChart.destroy();
+
+      weightChart = new Chart(weightCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Peso corporal',
+            data: chartData.map((log) => log.body_weight_kg ?? null),
+            borderColor: '#3cf91a',
+            backgroundColor: 'rgba(60, 249, 26, 0.14)',
+            fill: true,
+            tension: 0.35,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          },
+        },
+      });
+
+      recoveryChart = new Chart(recoveryCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Fatiga',
+              data: chartData.map((log) => log.fatigue_level ?? null),
+              borderColor: '#00D4FF',
+              backgroundColor: 'rgba(0, 212, 255, 0.14)',
+              tension: 0.35,
+            },
+            {
+              label: 'Energía',
+              data: chartData.map((log) => log.energy_level ?? null),
+              borderColor: '#3cf91a',
+              backgroundColor: 'rgba(60, 249, 26, 0.14)',
+              tension: 0.35,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#E5E7EB' },
+            },
+          },
+          scales: {
+            x: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { min: 1, max: 10, ticks: { color: '#9CA3AF', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          },
+        },
+      });
+    }
+
+    document.querySelectorAll('[data-range-output]').forEach((output) => {
+      const input = document.getElementById(output.getAttribute('data-range-output'));
+      if (!(input instanceof HTMLInputElement)) return;
+      const sync = () => { output.textContent = input.value; };
+      sync();
+      input.addEventListener('input', sync);
+    });
+
+    renderRecentLogs();
+    renderCharts().catch((error) => showProgressFeedback(error instanceof Error ? error.message : 'No se pudieron cargar los gráficos.', 'error'));
+
+    progressForm?.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      if (!(progressForm instanceof HTMLFormElement) || !(progressSubmit instanceof HTMLButtonElement)) return;
+
+      progressSubmit.disabled = true;
+      progressSubmit.textContent = 'Registrando...';
+
+      const formData = new FormData(progressForm);
+      const symptoms = formData.getAll('symptoms');
+      const payload = Object.fromEntries(Array.from(formData.entries()).filter(([key]) => key !== 'symptoms'));
+      payload.symptoms = symptoms;
+
+      try {
+        const response = await fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || 'No se pudo registrar el progreso.');
+        }
+
+        progressLogs.unshift(data.log);
+        renderRecentLogs();
+        await renderCharts();
+        progressForm.reset();
+        const dateInput = progressForm.querySelector('input[name="log_date"]');
+        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+        document.querySelectorAll('[data-range-output]').forEach((output) => {
+          const input = document.getElementById(output.getAttribute('data-range-output'));
+          if (input instanceof HTMLInputElement) {
+            output.textContent = input.value;
+          }
+        });
+        showProgressFeedback('Progreso registrado correctamente.', 'success');
+      } catch (error) {
+        showProgressFeedback(error instanceof Error ? error.message : 'No se pudo registrar el progreso.', 'error');
+      } finally {
+        progressSubmit.disabled = false;
+        progressSubmit.textContent = 'Registrar';
+      }
+    });
+  </script>
+</Layout>
